@@ -1,0 +1,69 @@
+# Byte-compiled
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Data artifacts — parquet, csv, npy, pickle
+data/
+*.parquet
+*.csv
+*.feather
+*.npy
+*.npz
+*.pkl
+*.pickle
+
+# Model artifacts
+models/
+
+# Logs
+logs/
+*.log
+
+# Secrets
+secrets.alpaca.json
+secrets.*.json
+.env
+.envrc
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+*.so
+
+# Testing
+.pytest_cache/
+.coverage*
+htmlcov/
+coverage/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Documentation
+site/
+
+# Marimo
+__marimo__/

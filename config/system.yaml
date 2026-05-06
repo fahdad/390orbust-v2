@@ -1,0 +1,32 @@
+# ── 390OrBust v2 System Configuration ──────────────────────────
+
+stage: supervised_paper  # supervised_paper | autonomous_paper | autonomous_live
+
+data:
+  data_dir: data
+  model_dir: models
+  log_dir: logs
+
+alpaca:
+  key_id: ""              # set via env: ORBUST_ALPACA__KEY_ID
+  secret_key: ""          # set via env: ORBUST_ALPACA__SECRET_KEY
+  paper_endpoint: "https://paper-api.alpaca.markets"
+  live_endpoint: "https://api.alpaca.markets"
+  data_endpoint: "https://data.alpaca.markets"
+
+risk:
+  max_total_exposure: 100000.0
+  max_position_per_symbol: 20000.0
+  max_daily_loss: 5000.0
+  max_open_positions: 10
+  max_drawdown_pct: 0.15
+
+gpu:
+  device: auto            # auto | cuda | cpu
+  mixed_precision: true
+  memory_fraction: 0.8
+
+dashboard:
+  host: 127.0.0.1
+  port: 8080
+  refresh_interval_s: 5

@@ -1,0 +1,52 @@
+# Energy Conv1D strategy config — ported from v1
+name: "energy_conv1d"
+signal_type: "classification"
+symbols:
+  - XLE
+  - XOM
+  - CVX
+  - COP
+  - WMB
+  - EOG
+  - MPC
+  - KMI
+  - PSX
+  - SLB
+  - VLO
+  - BKR
+  - OKE
+  - TRGP
+  - EQT
+  - OXY
+  - FANG
+  - EXE
+  - DVN
+  - HAL
+  - TPL
+  - CTRA
+  - APA
+
+features:
+  names: []
+  # TODO: populate from v1's 785-feature suite
+
+model:
+  architecture: "conv1d"
+  hidden_dims: [64, 64]
+  dropout: 0.0
+  learning_rate: 0.001
+  batch_size: 256
+  max_epochs: 50
+  patience: 5
+  window_size: 15
+
+walk_forward:
+  mode: expanding
+  min_train_days: 30
+  validation_days: 5
+  step_days: 5
+
+cost_model:
+  spread_bps: 2.0
+  commission_per_share: 0.0
+  slippage_bps: 1.0
