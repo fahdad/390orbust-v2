@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>390 Or Bust — Manifesto</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  .hero {
+    position: relative;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.6;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10,10,15,0.3) 0%, rgba(10,10,15,0.95) 100%);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 800px;
+    padding: 2rem;
+  }
+
+  .hero-content h1 {
+    font-size: 6rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f7931a, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+
+  .hero-content .subtitle {
+    font-size: 1.3rem;
+    color: #8892b0;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .hero-content .tagline {
+    font-size: 1.5rem;
+    color: #ccd6f6;
+    margin-top: 1.5rem;
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin: 3rem 0;
+  }
+
+  .stat-card {
+    background: linear-gradient(135deg, rgba(247,147,26,0.08), rgba(0,212,255,0.08));
+    border: 1px solid rgba(247,147,26,0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .stat-card .number {
+    font-size: 3rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f7931a, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-card .label {
+    font-size: 0.9rem;
+    color: #8892b0;
+    margin-top: 0.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .divider {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #f7931a, #00d4ff);
+    margin: 2rem 0;
+  }
+
+  h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #ccd6f6;
+    margin-bottom: 1.5rem;
+  }
+
+  h2 .highlight {
+    background: linear-gradient(135deg, #f7931a, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  p {
+    color: #a8b2d1;
+    font-size: 1.1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .mantra {
+    background: linear-gradient(135deg, rgba(247,147,26,0.05), rgba(0,212,255,0.05));
+    border-left: 3px solid #f7931a;
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    border-radius: 0 8px 8px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: #ccd6f6;
+  }
+
+  .mantra .author {
+    margin-top: 0.5rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    color: #8892b0;
+    font-style: italic;
+  }
+
+  .mantra-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+
+  .mantra-grid .mantra {
+    margin: 0;
+  }
+
+  .phoenix-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    margin: 4rem 0;
+  }
+
+  .phoenix-section img {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(247,147,26,0.2);
+  }
+
+  .code-block {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: #8b949e;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+
+  .code-block .keyword { color: #ff7b72; }
+  .code-block .func { color: #d2a8ff; }
+  .code-block .str { color: #a5d6ff; }
+  .code-block .comment { color: #484f58; }
+  .code-block .num { color: #79c0ff; }
+
+  footer {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #484f58;
+    font-size: 0.85rem;
+  }
+
+  .glow-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #f7931a, #00d4ff, transparent);
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .hero-content h1 { font-size: 3.5rem; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .mantra-grid { grid-template-columns: 1fr; }
+    .phoenix-section { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<div class="hero">
+  <img src="https://v3b.fal.media/files/b/0a992d97/u2gSxI7TCK2MvhRc6gmSP_OmBIDPZ1.png" alt="390 Or Bust">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="subtitle">The Energy Sector Minute-Alpha Project</div>
+    <h1>390<br>OR BUST</h1>
+    <p class="tagline">"Predict the next 390 minutes, or go bust trying."</p>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<!-- ═══════════════════ NUMBERS ═══════════════════ -->
+<section>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="number">390</div>
+      <div class="label">Minutes in a trading day</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">23</div>
+      <div class="label">Energy sector symbols</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">785</div>
+      <div class="label">Engineered features</div>
+    </div>
+  </div>
+
+  <p>
+    From 09:30 to 16:00 Eastern, 390 minutes of price discovery, volatility,
+    and noise. The energy sector — XLE, XOM, CVX, COP — moves on oil prices,
+    OPEC whispers, earnings surprises, and the collective anxiety of every
+    trader watching the same screen. Your job is to find the signal.
+  </p>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════ THE NUMBERS GAME ═══════════════════ -->
+  <h2>The <span class="highlight">390</span> Minute Game</h2>
+  <p>
+    One full US equity session: 6.5 hours. 390 minutes. 23,400 seconds of
+    bid-ask spreads, volume spikes, and mean reversion. A third of all S&P 500
+    trades now happen in the <strong>final 10 minutes</strong>. The rest of the
+    day is where the edge is — if you can find it.
+  </p>
+
+  <p>
+    This project pits deep learning against the most efficient market in human
+    history. Conv1D, TCN, Transformers — architectures borrowed from NLP and
+    computer vision, retrained on OHLCV bars, RSI, ATR, price-VWAP spreads,
+    cross-sectional z-scores, and the ghost of autocorrelation at lag 5.
+  </p>
+
+  <div class="mantra">
+    "The market is an adversary that punishes sloppiness, rewards preparation,
+    and forgives nothing. Every architectural decision is measured by one
+    thing: does it survive contact with live capital?"
+    <div class="author">— The Hermes Persona</div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ═══════════════════ TENETS ═══════════════════ -->
+<section>
+  <h2>The <span class="highlight">Tenets</span></h2>
+
+  <div class="mantra-grid">
+    <div class="mantra">
+      Information is the commodity.
+      <div class="author">Every feature either creates alpha or is dead weight.</div>
+    </div>
+    <div class="mantra">
+      Be ruthless about losers.
+      <div class="author">Cut losing abstractions like losing positions.</div>
+    </div>
+    <div class="mantra">
+      The second mouse gets the cheese.
+      <div class="author">Don't chase clever. Chase correct.</div>
+    </div>
+    <div class="mantra">
+      Respect the downside.
+      <div class="author">If you can't articulate failure, don't ship.</div>
+    </div>
+    <div class="mantra">
+      Boil the ocean. Intelligently.
+      <div class="author">Effective completeness, not performative audit theater.</div>
+    </div>
+    <div class="mantra">
+      Protect your architecture.
+      <div class="author">One undisciplined exception today becomes a regime tomorrow.</div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ═══════════════════ PHOENIX ═══════════════════ -->
+<section>
+  <div class="phoenix-section">
+    <div>
+      <h2>From the <span class="highlight">Ashes</span> of v1</h2>
+      <p>
+        Version 1 was a research sandbox. 48 MB of notebooks, CSV dumps, saved
+        Keras weights, and a 51% validation accuracy that was either a genuine
+        edge or a monument to overfitting — we needed the infrastructure to tell
+        the difference.
+      </p>
+      <p>
+        v2 is the platform that v1 deserved: modular, event-driven, walk-forward
+        validated, cost-modeled, and designed for the full lifecycle from signal
+        research to autonomous live execution. One box. One operator. 23 symbols.
+        No excuses.
+      </p>
+    </div>
+    <img src="https://v3b.fal.media/files/b/0a992d98/OsaCDYhDjWcPGnu6rDG64_JRCYGVjz.png" alt="Phoenix from the charts">
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ═══════════════════ THE STACK ═══════════════════ -->
+<section>
+  <h2>The <span class="highlight">Stack</span></h2>
+
+  <div class="code-block">
+<span class="comment"># 390OrBust v2 — stack.yaml (if we wrote configs like this)</span>
+
+<span class="keyword">runtime</span>:   Python 3.12 + PyTorch 2.11 + CUDA 12.0
+<span class="keyword">gpu</span>:       RTX 3090 // 24 GB VRAM // mixed precision
+<span class="keyword">data</span>:      Alpaca 1-min bars → Parquet → 785-dim feature matrix
+<span class="keyword">models</span>:    Conv1D → TCN+SE → Transformer → Conv2D → ?
+<span class="keyword">validation</span>: Walk-forward expanding window // per-fold Sharpe
+<span class="keyword">cost</span>:       spread_bps=2.0 // slippage_bps=1.0 // min_cost=0.0
+<span class="keyword">risk</span>:       max_exposure=100k // max_drawdown=15%
+<span class="keyword">stage</span>:      supervised_paper → autonomous_paper → autonomous_live
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ═══════════════════ FINAL ═══════════════════ -->
+<section style="text-align:center;">
+  <h2>See you at <span class="highlight">09:30</span></h2>
+  <p style="max-width: 600px; margin: 1rem auto;">
+    The market opens every day at 09:30 Eastern. 390 minutes. No do-overs.
+    No epoch callbacks. No early stopping.
+  </p>
+  <p style="font-size: 1.2rem; color: #ccd6f6; font-weight: 700; margin-top: 2rem;">
+    Train your models. Trust your walk-forward. Cut your losers.<br>
+    <span style="background: linear-gradient(135deg, #f7931a, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 1.5rem;">
+      390 or bust.
+    </span>
+  </p>
+</section>
+
+<footer>
+  <p>Generated by Hermes Agent — web_search → web_extract → image_generate → write_file</p>
+  <p>Tool chain: 5 API calls, 0 manual edits, ~40 seconds of wall clock</p>
+</footer>
+
+</body>
+</html>
