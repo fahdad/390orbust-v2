@@ -10,13 +10,17 @@ Layered YAML config with Pydantic validation:
 from __future__ import annotations
 
 import threading
+from datetime import timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
+
+if TYPE_CHECKING:
+    from orbust.types import CostModel, WalkForwardPolicy
 
 # ═══════════════════════════════════════════════════════════════
 # System config — loaded from config/system.yaml
@@ -93,7 +97,13 @@ class SystemConfig(BaseSettings):
                 if not _dotenv_loaded:
                     load_dotenv()
                     _dotenv_loaded = True
-        path = Path(path or "config/system.yaml")
+
+        # Default config path uses the system's data config_dir as base
+        if path is None:
+            cfg = cls()
+            path = Path(cfg.data.config_dir) / "system.yaml"
+        else:
+            path = Path(path)
         if path.exists():
             with open(path) as f:
                 raw = yaml.safe_load(f) or {}
@@ -115,11 +125,35 @@ class WalkForwardConfig(BaseModel):
     step_days: int = 5
     window_days: int | None = None
 
+    def to_policy(self) -> WalkForwardPolicy:
+        """Convert config to the types.py dataclass for use in backtesting."""
+        from orbust.types import WalkForwardPolicy, WFMode
+
+        return WalkForwardPolicy(
+            mode=WFMode.EXPANDING if self.mode == "expanding" else WFMode.ROLLING,
+            min_train_size=timedelta(days=self.min_train_days),
+            validation_size=timedelta(days=self.validation_days),
+            step_size=timedelta(days=self.step_days),
+            window_size=timedelta(days=self.window_days) if self.window_days else None,
+        )
+
 
 class CostModelConfig(BaseModel):
     spread_bps: float = 2.0
     commission_per_share: float = 0.0
     slippage_bps: float = 1.0
+    min_cost: float = 0.0
+
+    def to_model(self) -> CostModel:
+        """Convert config to the types.py dataclass for use in backtesting."""
+        from orbust.types import CostModel
+
+        return CostModel(
+            spread_bps=self.spread_bps,
+            commission_per_share=self.commission_per_share,
+            slippage_bps=self.slippage_bps,
+            min_cost=self.min_cost,
+        )
 
 
 class FeatureConfig(BaseModel):

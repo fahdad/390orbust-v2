@@ -2,6 +2,20 @@
 
 All shared dataclasses, enums, and type aliases live here.
 This module has zero dependencies outside stdlib + pydantic.
+
+Signal payload schemas by signal_type:
+
+    CLASSIFICATION: {symbol: {class_label: str, confidence: dict[str, float]}}
+        e.g. {"XOM": {"class_label": "up", "confidence": {"up": 0.72, "down": 0.28}}}
+
+    REGRESSION: {symbol: {forecast: float, ci_lower: float, ci_upper: float}}
+        e.g. {"XOM": {"forecast": 0.0012, "ci_lower": -0.0005, "ci_upper": 0.0029}}
+
+    RANKING: {ranked_symbols: list[tuple[str, float]]}
+        e.g. {"ranked_symbols": [("XOM", 0.85), ("CVX", 0.72), ...]}
+
+    POSITION: {symbol: {target_shares: int, target_weight: float}}
+        e.g. {"XOM": {"target_shares": 500, "target_weight": 0.15}}
 """
 
 from __future__ import annotations
@@ -117,6 +131,7 @@ class ProposedAction:
 
     action_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     strategy_name: str = ""
+    signal: Signal | None = None  # originating signal for traceability
     symbol: str = ""
     side: Side = Side.HOLD
     quantity: int = 0
