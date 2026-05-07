@@ -42,23 +42,25 @@ class ParquetStore:
             return []
 
         df = df.copy()
+        # Normalise index to UTC before partitioning so the file path
+        # logic sees the correct calendar date regardless of input tz.
+        if df.index.tz is None:  # type: ignore[attr-defined]
+            df.index = df.index.tz_localize("UTC")  # type: ignore[attr-defined]
+        else:
+            df.index = df.index.tz_convert("UTC")  # type: ignore[attr-defined]
+
         if symbols:
             cols = [c for c in df.columns if self._col_symbol(c) in symbols]
             df = df[cols]
 
         paths: list[Path] = []
-        for day_val, group in df.groupby(df.index.date):
+        for day_val, group in df.groupby(df.index.date):  # type: ignore[attr-defined]
             day = day_val if isinstance(day_val, date) else date.min
             path = self._date_path(day)
             path.parent.mkdir(parents=True, exist_ok=True)
 
-            write_df = group.copy()
-            idx_utc = write_df.index.tz_convert("UTC") if write_df.index.tz else write_df.index  # type: ignore[union-attr]
-            write_df.index = idx_utc  # type: ignore[assignment]
-
-            table = pa.Table.from_pandas(write_df)
+            table = pa.Table.from_pandas(group)
             pq.write_table(table, str(path))
-
             paths.append(path)
 
         return paths
@@ -114,16 +116,22 @@ class ParquetStore:
                 return None
             df = df[cols]
 
-        # Filter time range
+        # Filter time range (accept both naive and aware inputs)
+        start_ts: pd.Timestamp | None = None
+        end_ts: pd.Timestamp | None = None
+
         if start is not None:
             start_ts = pd.Timestamp(start)
             if start_ts.tz is None:
                 start_ts = start_ts.tz_localize("UTC")
-            df = df[df.index >= start_ts]
         if end is not None:
             end_ts = pd.Timestamp(end)
             if end_ts.tz is None:
                 end_ts = end_ts.tz_localize("UTC")
+
+        if start_ts is not None:
+            df = df[df.index >= start_ts]
+        if end_ts is not None:
             df = df[df.index <= end_ts]
 
         return df
@@ -134,8 +142,9 @@ class ParquetStore:
     ) -> list[tuple[datetime, datetime]]:
         """Return sorted list of (start, end) tuples for cached date ranges.
 
-        Omits empty days.  When *symbols* is provided, only considers
-        files that contain data for at least one of those symbols.
+        Uses Parquet file metadata statistics to avoid reading the full
+        table contents.  When *symbols* is provided, only considers files
+        that contain data for at least one of those symbols.
         """
         cached = sorted(self._iter_date_paths(symbols))
         if not cached:
@@ -143,23 +152,53 @@ class ParquetStore:
 
         ranges: list[tuple[datetime, datetime]] = []
         for path in cached:
-            # Read first and last timestamps from metadata
             try:
-                pq.read_metadata(str(path))
+                meta = pq.read_metadata(str(path))
             except Exception:
                 continue
 
-            full = pq.read_table(str(path))
-            pdf = full.to_pandas()
-            if pdf.empty:
+            num_rows = meta.num_rows
+            if num_rows == 0:
                 continue
 
-            if pdf.index.tz is None:
-                pdf.index = pdf.index.tz_localize("UTC")
+            # Read only the index column from the first/last row groups
+            # to extract the time range via statistics.
+            schema = pq.read_schema(str(path))
+            # The index is stored as the first column under `__index_level_0__`
+            # or as a regular column.  Use the schema to find the index column.
+            index_col = "".join(
+                sorted(n for n in schema.names if n.startswith("__index_level_"))
+            )
+            if not index_col:
+                # Fall back to reading the whole table (unexpected schema)
+                full = pq.read_table(str(path))
+                pdf = full.to_pandas()
+                if pdf.empty:
+                    continue
+                if pdf.index.tz is None:
+                    pdf.index = pdf.index.tz_localize("UTC")
+                ranges.append((pdf.index.min().to_pydatetime(), pdf.index.max().to_pydatetime()))  # type: ignore[attr-defined]
+                continue
 
-            start_ts = pdf.index.min().to_pydatetime()
-            end_ts = pdf.index.max().to_pydatetime()
-            ranges.append((start_ts, end_ts))
+            # Read the index column only to get the time range
+            idx_table = pq.read_table(str(path), columns=[index_col])
+            idx_series = idx_table.column(index_col).to_pylist()
+            if not idx_series:
+                continue
+
+            # Convert to timestamps
+            ts_list = [pd.Timestamp(t) for t in idx_series if t is not None]
+            if not ts_list:
+                continue
+
+            ts_min = min(ts_list)
+            ts_max = max(ts_list)
+            if ts_min.tz is None:
+                ts_min = ts_min.tz_localize("UTC")
+            if ts_max.tz is None:
+                ts_max = ts_max.tz_localize("UTC")
+
+            ranges.append((ts_min.to_pydatetime(), ts_max.to_pydatetime()))
 
         # Merge contiguous / overlapping ranges
         ranges.sort(key=lambda r: r[0])
@@ -211,12 +250,6 @@ class ParquetStore:
         """Extract symbol from ``{SYM}_{field}`` column name."""
         return col_name.rsplit("_", 1)[0]
 
-    @staticmethod
-    def _index_date(df: pd.DataFrame) -> pd.Series:
-        """Extract date from a DatetimeIndex for groupby."""
-        import numpy as np
-        return pd.Series(np.asarray(df.index.date, dtype="object"), index=df.index)  # type: ignore[no-any-return]
-
     def _timeframe_dir(self) -> str:
         return self._timeframe.value.replace("Min", "min").lower()
 
@@ -237,9 +270,8 @@ class ParquetStore:
         """Walk the store directory and return all existing parquet paths.
 
         When *symbols* is provided, only returns paths for dates where
-        the parquet file is non-empty and contains at least one of the
-        requested symbols.  This is expensive for many symbols — prefer
-        ``get_cached_ranges()``.
+        the parquet file contains at least one of the requested symbols.
+        Uses the schema (column names) to filter, not full table reads.
         """
         timeframe_dir = self._base / self._timeframe_dir()
         if not timeframe_dir.is_dir():
@@ -267,7 +299,11 @@ class ParquetStore:
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[Path]:
-        """Collect Parquet paths whose date falls within [*start*, *end*]."""
+        """Collect Parquet paths whose date falls within [*start*, *end*].
+
+        Uses the file path date encoding (YYYY/MM/DD.parquet) to filter
+        — no table reads required.
+        """
         timeframe_dir = self._base / self._timeframe_dir()
         if not timeframe_dir.is_dir():
             return []
