@@ -181,9 +181,7 @@ class ParquetStore:
             schema = pq.read_schema(str(path))
             # The index is stored as the first column under `__index_level_0__`
             # or as a regular column.  Use the schema to find the index column.
-            index_col = "".join(
-                sorted(n for n in schema.names if n.startswith("__index_level_"))
-            )
+            index_col = "".join(sorted(n for n in schema.names if n.startswith("__index_level_")))
             if not index_col:
                 # Fall back to reading the whole table (unexpected schema)
                 full = pq.read_table(str(path))

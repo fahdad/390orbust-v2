@@ -204,8 +204,8 @@ def test_incremental_write_merges_with_existing(store: ParquetStore) -> None:
     # (no data loss despite two writes to the same date)
     assert len(result) == 230
     # Data from both batches present — overlap uses last-write-wins
-    assert result.iloc[0]["XOM_close"] == 100.0   # from first batch
-    assert result.iloc[-1]["XOM_close"] == 101.0   # from second batch
+    assert result.iloc[0]["XOM_close"] == 100.0  # from first batch
+    assert result.iloc[-1]["XOM_close"] == 101.0  # from second batch
 
 
 def test_importable_from_data_module() -> None:
