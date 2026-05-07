@@ -23,8 +23,8 @@
       "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
     },
     "WI-2.3": {
-      "status": "not_started",
-      "notes": ""
+      "status": "in_pr",
+      "notes": "PR #2 (wi/p2-alpaca-integration). 4 review rounds completed before opening."
     },
     "WI-2.4": {
       "status": "not_started",

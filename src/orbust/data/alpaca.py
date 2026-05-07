@@ -11,7 +11,7 @@ import re
 import threading
 import time
 from collections import deque
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -214,7 +214,6 @@ class AlpacaFetcher:
             raise ValueError("start and end must be timezone-aware datetimes")
         if start.utcoffset() is None or end.utcoffset() is None:
             raise ValueError("start and end must have a UTC offset")
-        from datetime import timedelta
 
         if start.utcoffset() != timedelta(0):
             raise ValueError(f"start must be in UTC, got offset {start.utcoffset()}")
@@ -367,7 +366,15 @@ class AlpacaFetcher:
 
             if response.status_code == 429:
                 if attempt < _MAX_RETRIES - 1:
-                    sleep_time = self._backoff(attempt)
+                    # Respect Retry-After header if provided by Alpaca
+                    retry_after = response.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            sleep_time = float(retry_after)
+                        except (ValueError, TypeError):
+                            sleep_time = self._backoff(attempt)
+                    else:
+                        sleep_time = self._backoff(attempt)
                     self._logger.warning(
                         "request_retry_429",
                         attempt=attempt + 1,
@@ -409,7 +416,14 @@ class AlpacaFetcher:
                     response_body=response.text[:500],
                 )
 
-            return response.json()
+            try:
+                return response.json()
+            except (ValueError, TypeError) as e:
+                raise AlpacaFetchError(
+                    f"Failed to parse JSON (HTTP {response.status_code}): {e}",
+                    status_code=response.status_code,
+                    response_body=response.text[:500],
+                ) from e
 
         # Should not reach here, but satisfy type checker
         raise AlpacaFetchError("Unexpected error in _request")

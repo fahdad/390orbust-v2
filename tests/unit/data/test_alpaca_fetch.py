@@ -65,6 +65,7 @@ def _mock_response(status_code: int, json_data: dict[str, Any]) -> MagicMock:
     mock.status_code = status_code
     mock.text = str(json_data)
     mock.json.return_value = json_data
+    mock.headers = {}
     return mock
 
 
