@@ -25,7 +25,7 @@ _ET = ZoneInfo("America/New_York")
 
 # RTH window in ET
 RTH_START_ET = time(9, 30)  # 09:30 ET — market open
-RTH_END_ET = time(16, 0)    # 16:00 ET — market close (exclusive)
+RTH_END_ET = time(16, 0)  # 16:00 ET — market close (exclusive)
 
 # Number of RTH minutes per trading day: (16:00 - 09:30) * 60 = 390
 _RTH_MINUTES_PER_DAY = 390
@@ -57,7 +57,7 @@ def is_rth(timestamp: datetime) -> bool:
         return False
 
     # Time-of-day check: [09:30, 16:00) ET
-    t = ts_et.timetz()
+    t = ts_et.time()
     return RTH_START_ET <= t < RTH_END_ET
 
 
@@ -66,6 +66,8 @@ def filter_rth(df: pd.DataFrame) -> pd.DataFrame:
 
     The DataFrame must have a ``DatetimeIndex`` (timezone-aware or naive).
     Naive indices are treated as UTC and converted to ET for filtering.
+
+    Uses vectorized pandas operations for performance.
 
     Args:
         df: DataFrame with ``DatetimeIndex``.
@@ -77,7 +79,21 @@ def filter_rth(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
-    mask = df.index.map(is_rth)
+    # Normalize index to ET for vectorized comparison
+    idx = df.index
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC")
+    idx_et = idx.tz_convert(_ET)
+
+    # Weekend filter: Monday=0 .. Friday=4, Saturday=5, Sunday=6
+    weekday_mask = idx_et.weekday < 5
+
+    # Time-of-day filter: [09:30, 16:00) ET
+    # Build time components for vectorized comparison
+    time_mask = (idx_et.hour > 9) | ((idx_et.hour == 9) & (idx_et.minute >= 30))
+    time_mask &= idx_et.hour < 16
+
+    mask = weekday_mask & time_mask
     return df.loc[mask]
 
 

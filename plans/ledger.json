@@ -27,8 +27,8 @@
       "notes": "PR #2 (wi/p2-alpaca-integration). 4 review rounds completed before opening."
     },
     "WI-2.4": {
-      "status": "not_started",
-      "notes": ""
+      "status": "in_pr",
+      "notes": "PR #3 (wi/p2-rth-filtering). 31 tests. Gemini review kicked off."
     },
     "WI-2.5": {
       "status": "not_started",

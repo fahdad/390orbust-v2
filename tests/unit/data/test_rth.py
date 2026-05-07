@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
-from zoneinfo import ZoneInfo
 
 from orbust.data.rth import (
     RTH_END_ET,
@@ -19,9 +19,14 @@ from orbust.data.rth import (
 _ET = ZoneInfo("America/New_York")
 _UTC = ZoneInfo("UTC")
 
+
 # Helpers for test readability
-_utc = lambda y, m, d, h, mi: datetime(y, m, d, h, mi, tzinfo=_UTC)
-_et = lambda y, m, d, h, mi: datetime(y, m, d, h, mi, tzinfo=_ET)
+def _utc(y: int, m: int, d: int, h: int, mi: int) -> datetime:
+    return datetime(y, m, d, h, mi, tzinfo=_UTC)
+
+
+def _et(y: int, m: int, d: int, h: int, mi: int) -> datetime:
+    return datetime(y, m, d, h, mi, tzinfo=_ET)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -75,8 +80,8 @@ class TestIsRth:
 
     def test_rth_constants(self) -> None:
         """RTH constants are set correctly."""
-        assert RTH_START_ET == time(9, 30)
-        assert RTH_END_ET == time(16, 0)
+        assert time(9, 30) == RTH_START_ET
+        assert time(16, 0) == RTH_END_ET
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -128,10 +133,12 @@ class TestFilterRth:
 
     def test_removes_pre_market(self) -> None:
         """Bars before 09:30 ET are removed."""
-        idx = pd.DatetimeIndex([
-            _utc(2023, 3, 1, 13, 0),   # 08:00 ET — pre-market
-            _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
-        ])
+        idx = pd.DatetimeIndex(
+            [
+                _utc(2023, 3, 1, 13, 0),  # 08:00 ET — pre-market
+                _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
+            ]
+        )
         df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
         result = filter_rth(df)
         assert len(result) == 1
@@ -139,22 +146,26 @@ class TestFilterRth:
 
     def test_removes_after_hours(self) -> None:
         """Bars at or after 16:00 ET are removed."""
-        idx = pd.DatetimeIndex([
-            _utc(2023, 3, 1, 20, 30),  # 15:30 ET — inside
-            _utc(2023, 3, 1, 21, 0),   # 16:00 ET — close
-        ])
+        idx = pd.DatetimeIndex(
+            [
+                _utc(2023, 3, 1, 20, 30),  # 15:30 ET — inside
+                _utc(2023, 3, 1, 21, 0),  # 16:00 ET — close
+            ]
+        )
         df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
         result = filter_rth(df)
         assert len(result) == 1
 
     def test_removes_weekends(self) -> None:
         """Weekend bars are removed."""
-        idx = pd.DatetimeIndex([
-            _utc(2023, 3, 3, 14, 30),  # Friday — RTH
-            _utc(2023, 3, 4, 14, 30),  # Saturday — no
-            _utc(2023, 3, 5, 14, 30),  # Sunday — no
-            _utc(2023, 3, 6, 14, 30),  # Monday — RTH
-        ])
+        idx = pd.DatetimeIndex(
+            [
+                _utc(2023, 3, 3, 14, 30),  # Friday — RTH
+                _utc(2023, 3, 4, 14, 30),  # Saturday — no
+                _utc(2023, 3, 5, 14, 30),  # Sunday — no
+                _utc(2023, 3, 6, 14, 30),  # Monday — RTH
+            ]
+        )
         df = pd.DataFrame({"close": [1.0, 2.0, 3.0, 4.0]}, index=idx)
         result = filter_rth(df)
         assert len(result) == 2
@@ -187,10 +198,12 @@ class TestFilterRth:
     def test_utc_index(self) -> None:
         """UTC-indexed DataFrame is filtered correctly."""
         # 14:30 UTC = 09:30 ET (standard time)
-        idx = pd.DatetimeIndex([
-            _utc(2023, 3, 1, 13, 0),   # 08:00 ET — pre-market
-            _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
-        ])
+        idx = pd.DatetimeIndex(
+            [
+                _utc(2023, 3, 1, 13, 0),  # 08:00 ET — pre-market
+                _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
+            ]
+        )
         df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
         result = filter_rth(df)
         assert len(result) == 1

@@ -98,12 +98,9 @@ class SystemConfig(BaseSettings):
                     load_dotenv()
                     _dotenv_loaded = True
 
-        # Default config path uses the system's data config_dir as base
-        if path is None:
-            cfg = cls()
-            path = Path(cfg.data.config_dir) / "system.yaml"
-        else:
-            path = Path(path)
+        # Default config path uses the system's data config_dir as base.
+        # Access the default directly to avoid full instantiation here.
+        path = Path("config") / "system.yaml" if path is None else Path(path)
         if path.exists():
             with open(path) as f:
                 raw = yaml.safe_load(f) or {}
