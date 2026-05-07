@@ -186,6 +186,28 @@ def test_find_missing_ranges_partial(store: ParquetStore) -> None:
         assert ms > start or me < end
 
 
+def test_incremental_write_merges_with_existing(store: ParquetStore) -> None:
+    """Writing new data for a cached date merges without overwriting."""
+    # Write first batch (first 200 bars)
+    idx1 = pd.date_range(datetime(2023, 3, 1, 14, 30), periods=200, freq="min", tz="UTC")
+    df1 = pd.DataFrame({"XOM_close": [100.0] * len(idx1)}, index=idx1)
+    store.write(df1)
+
+    # Write second batch (last 200 bars, overlapping + extending)
+    idx2 = pd.date_range(datetime(2023, 3, 1, 15, 0), periods=200, freq="min", tz="UTC")
+    df2 = pd.DataFrame({"XOM_close": [101.0] * len(idx2)}, index=idx2)
+    store.write(df2)
+
+    result = store.read()
+    assert result is not None
+    # 230 unique bars: 200 + 200 - 170 overlapping minutes
+    # (no data loss despite two writes to the same date)
+    assert len(result) == 230
+    # Data from both batches present — overlap uses last-write-wins
+    assert result.iloc[0]["XOM_close"] == 100.0   # from first batch
+    assert result.iloc[-1]["XOM_close"] == 101.0   # from second batch
+
+
 def test_importable_from_data_module() -> None:
     """ParquetStore is importable from orbust.data."""
     from orbust.data import ParquetStore

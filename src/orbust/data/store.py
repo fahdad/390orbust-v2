@@ -59,7 +59,22 @@ class ParquetStore:
             path = self._date_path(day)
             path.parent.mkdir(parents=True, exist_ok=True)
 
-            table = pa.Table.from_pandas(group)
+            # Merge with existing data so incremental fetches don't
+            # overwrite previously cached bars for the same date.
+            if path.exists():
+                existing = pq.read_table(str(path)).to_pandas()
+                if existing.index.tz is None:
+                    existing.index = existing.index.tz_localize("UTC")
+                else:
+                    existing.index = existing.index.tz_convert("UTC")
+                merged = pd.concat([existing, group])
+                merged = merged[~merged.index.duplicated(keep="last")]
+                merged = merged.sort_index()
+                write_df = merged
+            else:
+                write_df = group
+
+            table = pa.Table.from_pandas(write_df)
             pq.write_table(table, str(path))
             paths.append(path)
 
