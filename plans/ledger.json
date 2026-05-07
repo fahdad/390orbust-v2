@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-07T10:54:28Z",
+  "updated": "2026-05-07T13:40:25Z",
   "notes": "Ledger tracks live status of each work item. Update via end-session.py.",
   "phase_states": {
     "phase-01": "completed",
@@ -23,12 +23,12 @@
       "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
     },
     "WI-2.3": {
-      "status": "in_pr",
+      "status": "merged",
       "notes": "PR #2 (wi/p2-alpaca-integration). 4 review rounds completed before opening."
     },
     "WI-2.4": {
-      "status": "in_pr",
-      "notes": "PR #3 (wi/p2-rth-filtering). 31 tests. Gemini review kicked off."
+      "status": "merged",
+      "notes": ""
     },
     "WI-2.5": {
       "status": "not_started",
