@@ -102,7 +102,7 @@ class SystemConfig(BaseSettings):
         # Access the default directly to avoid full instantiation here.
         path = Path("config") / "system.yaml" if path is None else Path(path)
         if path.exists():
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
         else:
             raw = {}
@@ -201,7 +201,7 @@ class StrategyConfig(BaseModel):
 def load_strategy_config(path: str | Path) -> StrategyConfig:
     """Load and validate a strategy YAML config."""
     path = Path(path)
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
     return StrategyConfig(**raw)
 

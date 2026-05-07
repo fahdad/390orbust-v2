@@ -11,7 +11,7 @@ Provides:
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -110,21 +110,14 @@ def get_rth_minutes(trading_date: date) -> list[datetime]:
     Returns:
         List of UTC-aware datetime objects, one per RTH minute.
     """
-    # Build start time in ET
+    # Build start time in ET and generate all minutes via pandas
     start_dt_et = datetime.combine(
         trading_date,
         RTH_START_ET,
         tzinfo=_ET,
     )
-
-    # Generate all minutes in ET
-    et_times: list[datetime] = []
-    for i in range(_RTH_MINUTES_PER_DAY):
-        minute_dt = start_dt_et + timedelta(minutes=i)
-        et_times.append(minute_dt)
-
-    # Convert to UTC for output consistency
-    return [t.astimezone(ZoneInfo("UTC")) for t in et_times]
+    idx = pd.date_range(start=start_dt_et, periods=_RTH_MINUTES_PER_DAY, freq="min")
+    return idx.tz_convert("UTC").to_pydatetime().tolist()
 
 
 # ═══════════════════════════════════════════════════════════════
