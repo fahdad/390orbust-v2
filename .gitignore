@@ -10,7 +10,7 @@ venv/
 ENV/
 
 # Data artifacts — parquet, csv, npy, pickle
-data/
+/data/
 *.parquet
 *.csv
 *.feather
@@ -20,10 +20,10 @@ data/
 *.pickle
 
 # Model artifacts
-models/
+/models/
 
 # Logs
-logs/
+/logs/
 *.log
 
 # Secrets

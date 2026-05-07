@@ -1,0 +1,99 @@
+# 390OrBust v2 — Work Item Schema & Index
+
+work_item_schema:
+  id: "WI-{phase}.{sequence}"
+  title: "Short imperative title"
+  module: "data | features | strategy | evaluation | execution | dashboard | ledger"
+  status: "not_started | in_progress | complete | merged | blocked | cancelled"
+
+  depends_on:
+    - "WI-{prev-id}"
+  prerequisite_phases:
+    - 1
+
+  objective: "What capability exists when this is done?"
+  files_to_create:
+    - "src/orbust/data/provider.py"
+  files_to_modify:
+    - "src/orbust/types.py"
+  tests_to_create:
+    - "tests/test_data_provider.py"
+  context_files:
+    - "src/orbust/types.py"
+    - "src/orbust/config.py"
+
+  interface_contract: |
+    What interfaces exist that this must conform to.
+    What it exposes for downstream items.
+
+  acceptance_criteria:
+    - "Verifiable assertion"
+  validation:
+    - "uv run pytest tests/test_foo.py -v"
+  non_goals:
+    - "Deferred to WI-X.Y"
+
+  review_group: "group-name"
+  commit_msg: "WI-{phase}.{seq}: {title}"
+  risk_level: "low | medium | high"
+  estimated_lines: 300
+
+status_legend:
+  not_started: "Defined but not begun"
+  in_progress: "Currently being implemented"
+  complete: "Code written, tests pass, committed to branch"
+  merged: "PR merged to main"
+  blocked: "Waiting on dependency"
+  cancelled: "No longer needed"
+
+phase_index:
+  - phase: 1
+    name: "Foundation"
+    sessions: "1-3"
+    status: "Complete"
+    pr_groups: "Project skeleton, types, config, logging, CI"
+  - phase: 2
+    name: "Data Pipeline"
+    sessions: "4-6"
+    status: "Ready to decompose"
+    pr_groups: "data-foundation, alpaca-integration, data-quality"
+  - phase: 3
+    name: "Feature Engineering"
+    sessions: "7-10"
+    status: "Decompose after P2"
+    pr_groups: "registry-core, builtins-returns, builtins-advanced, parity-validation"
+  - phase: 4
+    name: "Strategy Framework"
+    sessions: "11-14"
+    status: "Decompose after P3"
+    pr_groups: "strategy-contract, training-harness, gpu-cli"
+  - phase: 5
+    name: "Evaluation"
+    sessions: "15-18"
+    status: "Decompose after P4"
+    pr_groups: "walk-forward, backtester, metrics-audit"
+  - phase: 6
+    name: "Risk"
+    sessions: "19-21"
+    status: "Decompose after P5"
+    pr_groups: "interpreter, risk-gate, logging"
+  - phase: 7
+    name: "Execution"
+    sessions: "22-25"
+    status: "Decompose after P6"
+    pr_groups: "broker-abc, order-lifecycle, crash-recovery"
+  - phase: 8
+    name: "Dashboard"
+    sessions: "26-30"
+    status: "Decompose after P7"
+    pr_groups: "research-api, ops-api, views"
+  - phase: 9
+    name: "v1 Port"
+    sessions: "31-33"
+    status: "Decompose after P8"
+    pr_groups: "parity-audit, model-implementation, validation"
+  - phase: 10
+    name: "Architecture Search"
+    sessions: "34+"
+    status: "Decompose after P9"
+    pr_groups: "Separate experiments per architecture"
