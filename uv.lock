@@ -1612,12 +1612,14 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "alpaca-py" },
+    { name = "httpx" },
     { name = "numpy" },
     { name = "orjson" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "scikit-learn" },
     { name = "structlog" },
@@ -1654,6 +1656,7 @@ web = [
 requires-dist = [
     { name = "alpaca-py", specifier = ">=0.35" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "httpx", marker = "extra == 'web'", specifier = ">=0.28" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6" },
@@ -1673,6 +1676,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3" },
+    { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15" },

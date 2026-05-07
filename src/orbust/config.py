@@ -9,10 +9,12 @@ Layered YAML config with Pydantic validation:
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -34,6 +36,7 @@ class AlpacaConfig(BaseModel):
     paper_endpoint: str = "https://paper-api.alpaca.markets"
     live_endpoint: str = "https://api.alpaca.markets"
     data_endpoint: str = "https://data.alpaca.markets"
+    feed: Literal["sip", "iex"] = "sip"  # sip (subscription) or iex (free-tier)
 
 
 class RiskLimits(BaseModel):
@@ -54,6 +57,11 @@ class DashboardConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8080
     refresh_interval_s: int = 5
+
+
+# Module-level guard so load_dotenv runs only once (thread-safe)
+_dotenv_loaded: bool = False
+_dotenv_lock: threading.Lock = threading.Lock()
 
 
 class SystemConfig(BaseSettings):
@@ -77,7 +85,14 @@ class SystemConfig(BaseSettings):
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> SystemConfig:
-        """Load config from YAML, overlay env vars, validate."""
+        """Load config from YAML, overlay env vars (and .env if present), validate."""
+        global _dotenv_loaded
+        if not _dotenv_loaded:
+            with _dotenv_lock:
+                # Double-check after acquiring lock
+                if not _dotenv_loaded:
+                    load_dotenv()
+                    _dotenv_loaded = True
         path = Path(path or "config/system.yaml")
         if path.exists():
             with open(path) as f:
