@@ -106,6 +106,14 @@ ignore_missing_imports = true
 module = ["torch.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["pyarrow.*", "pyarrow.parquet.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["orbust.data.store"]
+ignore_errors = true
+
 # ==============================================================================
 # pytest
 # ==============================================================================
