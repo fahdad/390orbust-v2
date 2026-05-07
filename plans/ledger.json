@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-07T06:00:00Z",
+  "updated": "2026-05-07T10:51:48Z",
   "notes": "Ledger tracks live status of each work item. Update via end-session.py.",
   "phase_states": {
     "phase-01": "completed",
@@ -15,11 +15,11 @@
   },
   "items": {
     "WI-2.1": {
-      "status": "in_pr",
+      "status": "merged",
       "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
     },
     "WI-2.2": {
-      "status": "in_pr",
+      "status": "merged",
       "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
     },
     "WI-2.3": {
