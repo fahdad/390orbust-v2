@@ -1,0 +1,50 @@
+{
+  "updated": "2026-05-07T06:00:00Z",
+  "notes": "Ledger tracks live status of each work item. Update via end-session.py.",
+  "phase_states": {
+    "phase-01": "completed",
+    "phase-02": "in_progress",
+    "phase-03": "planned",
+    "phase-04": "planned",
+    "phase-05": "planned",
+    "phase-06": "planned",
+    "phase-07": "planned",
+    "phase-08": "planned",
+    "phase-09": "planned",
+    "phase-10": "planned"
+  },
+  "items": {
+    "WI-2.1": {
+      "status": "in_pr",
+      "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
+    },
+    "WI-2.2": {
+      "status": "in_pr",
+      "notes": "Implemented. In PR #1 (wi/p2-data-foundation)."
+    },
+    "WI-2.3": {
+      "status": "not_started",
+      "notes": ""
+    },
+    "WI-2.4": {
+      "status": "not_started",
+      "notes": ""
+    },
+    "WI-2.5": {
+      "status": "not_started",
+      "notes": ""
+    },
+    "WI-2.6": {
+      "status": "not_started",
+      "notes": ""
+    },
+    "WI-2.7": {
+      "status": "not_started",
+      "notes": ""
+    },
+    "WI-2.8": {
+      "status": "not_started",
+      "notes": ""
+    }
+  }
+}

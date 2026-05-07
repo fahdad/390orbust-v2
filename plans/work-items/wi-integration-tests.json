@@ -1,0 +1,81 @@
+{
+  "id": "WI-WI-2-7",
+  "title": "Implement data pipeline integration tests",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.5",
+    "WI-2.6"
+  ],
+  "objective": "Integration tests verify the full pipeline from fetch through cache through quality check, using mocked Alpaca responses with realistic data",
+  "files_to_create": [
+    "tests/integration/data/test_data_pipeline.py",
+    "tests/integration/data/conftest.py",
+    "tests/fixtures/alpaca_response_sample.json"
+  ],
+  "files_to_modify": [],
+  "context_files": [
+    "src/orbust/data/alpaca.py",
+    "src/orbust/data/store.py",
+    "src/orbust/data/quality.py",
+    "src/orbust/data/rth.py",
+    "src/orbust/config.py",
+    "tests/conftest.py"
+  ],
+  "interface_contract": {
+    "test_scenarios": [
+      {
+        "name": "test_full_fetch_cache_read_cycle",
+        "verifies": "Fetch -> write Parquet -> read back -> data matches"
+      },
+      {
+        "name": "test_partial_cache_refetch",
+        "verifies": "Cached range + missing range -> only missing fetched"
+      },
+      {
+        "name": "test_rth_filtering_end_to_end",
+        "verifies": "Raw data with extended hours -> filtered to 390 bars/day"
+      },
+      {
+        "name": "test_quality_on_clean_data",
+        "verifies": "Clean fetched data passes all quality checks"
+      },
+      {
+        "name": "test_quality_on_gapped_data",
+        "verifies": "Data with intentional gaps detected correctly"
+      },
+      {
+        "name": "test_multi_symbol_temporal_alignment",
+        "verifies": "Multiple symbols share identical timestamp index"
+      },
+      {
+        "name": "test_dst_transition_handling",
+        "verifies": "Data spanning DST change has correct RTH boundaries"
+      }
+    ]
+  },
+  "acceptance_criteria": [
+    "All 7 integration test scenarios pass",
+    "Tests use mocked HTTP responses (no real Alpaca calls)",
+    "Fixture JSON contains realistic multi-page Alpaca response",
+    "Tests exercise ParquetStore with real filesystem (tmp_path)",
+    "Cache hit path verified (second call does not trigger fetch)",
+    "Quality report on pipeline output shows is_clean=True",
+    "DST test covers both spring-forward and fall-back",
+    "Tests complete in under 10 seconds"
+  ],
+  "validation": [
+    "pytest tests/integration/data/ -v --timeout=30",
+    "pytest tests/ -v --timeout=60"
+  ],
+  "non_goals": [
+    "Real Alpaca API calls",
+    "Performance benchmarking",
+    "Load testing"
+  ],
+  "review_group": "data-quality",
+  "risk_level": "medium",
+  "estimated_lines": 280,
+  "task_id": "WI-2.7",
+  "phase": "phase-02"
+}

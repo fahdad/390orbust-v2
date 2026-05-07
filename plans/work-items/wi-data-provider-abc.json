@@ -1,0 +1,68 @@
+{
+  "id": "WI-WI-2-1",
+  "title": "Define DataProvider abstract base class",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [],
+  "objective": "A concrete ABC exists that all data providers must implement, with clear method signatures matching the architectural spec",
+  "files_to_create": [
+    "src/orbust/data/provider.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "tests_to_create": [
+    "tests/unit/data/test_provider.py"
+  ],
+  "context_files": [
+    "src/orbust/types.py",
+    "src/orbust/config.py",
+    "src/orbust/data/__init__.py"
+  ],
+  "interface_contract": {
+    "class": "DataProvider",
+    "methods": [
+      {
+        "name": "get_bars",
+        "signature": "(self, symbols: list[str], start: datetime, end: datetime, timeframe: Timeframe) -> pd.DataFrame",
+        "returns": "Wide-format DataFrame with UTC DatetimeIndex, columns named {SYM}_{field}"
+      },
+      {
+        "name": "stream_bars",
+        "signature": "(self, symbols: list[str], timeframe: Timeframe) -> Iterator[BarEvent]",
+        "returns": "Iterator yielding BarEvent objects"
+      },
+      {
+        "name": "available_fields",
+        "signature": "(self) -> list[str]",
+        "returns": "List of field name strings this provider offers"
+      }
+    ],
+    "exported_from": "src/orbust/data/provider.py"
+  },
+  "acceptance_criteria": [
+    "DataProvider cannot be instantiated directly (raises TypeError)",
+    "A subclass that implements all three methods can be instantiated",
+    "A subclass missing any method raises TypeError on instantiation",
+    "get_bars return type annotation is pd.DataFrame",
+    "stream_bars return type annotation is Iterator[BarEvent]",
+    "available_fields return type annotation is list[str]",
+    "DataProvider is importable from orbust.data",
+    "Module passes mypy --strict type checking"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_provider.py -v",
+    "python -c \"from orbust.data import DataProvider\"",
+    "mypy src/orbust/data/provider.py --strict"
+  ],
+  "non_goals": [
+    "Any concrete implementation",
+    "Caching logic",
+    "RTH filtering"
+  ],
+  "review_group": "data-foundation",
+  "risk_level": "low",
+  "estimated_lines": 65,
+  "task_id": "WI-2.1",
+  "phase": "phase-02"
+}

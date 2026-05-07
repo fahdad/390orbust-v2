@@ -1,0 +1,68 @@
+{
+  "id": "WI-WI-2-3",
+  "title": "Implement Alpaca bar fetcher with pagination and rate limiting",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.1"
+  ],
+  "objective": "An AlpacaFetcher class can retrieve historical bars from Alpaca API with proper pagination, rate limiting, and error handling",
+  "files_to_create": [
+    "src/orbust/data/alpaca.py",
+    "tests/unit/data/test_alpaca_fetch.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/types.py",
+    "src/orbust/config.py",
+    "src/orbust/log.py",
+    "src/orbust/data/provider.py"
+  ],
+  "interface_contract": {
+    "class": "AlpacaFetcher",
+    "constructor": "(self, config: AlpacaConfig, logger: BoundLogger | None = None)",
+    "methods": [
+      {
+        "name": "fetch_bars",
+        "signature": "(self, symbols: list[str], start: datetime, end: datetime, timeframe: Timeframe) -> pd.DataFrame",
+        "returns": "Wide-format DataFrame with UTC DatetimeIndex"
+      },
+      {
+        "name": "_paginate",
+        "signature": "(self, symbol: str, start: datetime, end: datetime, timeframe: Timeframe) -> list[dict]",
+        "returns": "List of raw bar dicts from Alpaca"
+      }
+    ],
+    "rate_limiting": "Respects 200 requests/minute limit with exponential backoff",
+    "exported_from": "src/orbust/data/alpaca.py"
+  },
+  "acceptance_criteria": [
+    "fetch_bars returns wide-format DataFrame with {SYM}_{field} columns",
+    "DatetimeIndex is UTC-aware",
+    "Pagination handles next_page_token correctly (tested with mock)",
+    "Rate limiter sleeps when approaching limit (tested with mock)",
+    "HTTP 429 triggers exponential backoff retry",
+    "HTTP 4xx/5xx raises descriptive AlpacaFetchError",
+    "All Alpaca HTTP calls go through a single _request method (mockable)",
+    "Timeframe enum maps correctly to Alpaca API timeframe strings",
+    "Empty response returns empty DataFrame with correct columns",
+    "Logger records fetch start, page count, total bars fetched"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_alpaca_fetch.py -v",
+    "python -c \"from orbust.data.alpaca import AlpacaFetcher\""
+  ],
+  "non_goals": [
+    "Caching (handled by provider layer)",
+    "RTH filtering",
+    "Streaming/websocket",
+    "Real API calls in unit tests"
+  ],
+  "review_group": "alpaca-integration",
+  "risk_level": "medium",
+  "estimated_lines": 220,
+  "task_id": "WI-2.3",
+  "phase": "phase-02"
+}

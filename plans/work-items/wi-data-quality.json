@@ -1,0 +1,121 @@
+{
+  "id": "WI-WI-2-6",
+  "title": "Implement data quality checks",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.1",
+    "WI-2.4"
+  ],
+  "objective": "A quality module detects gaps, duplicates, and timestamp anomalies in bar DataFrames and returns structured reports",
+  "files_to_create": [
+    "src/orbust/data/quality.py",
+    "tests/unit/data/test_quality.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/types.py",
+    "src/orbust/data/rth.py",
+    "tests/conftest.py"
+  ],
+  "interface_contract": {
+    "class": "QualityReport",
+    "fields": [
+      {
+        "name": "gaps",
+        "type": "list[GapInfo]",
+        "description": "Missing bars within expected trading hours"
+      },
+      {
+        "name": "duplicates",
+        "type": "list[datetime]",
+        "description": "Timestamps appearing more than once"
+      },
+      {
+        "name": "timestamp_issues",
+        "type": "list[TimestampIssue]",
+        "description": "Non-UTC, non-aligned, or out-of-order timestamps"
+      },
+      {
+        "name": "is_clean",
+        "type": "bool",
+        "description": "True if no issues found"
+      }
+    ],
+    "dataclass": "TimestampIssue",
+    "gap_fields": [
+      {
+        "symbol": "str"
+      },
+      {
+        "gap_start": "datetime"
+      },
+      {
+        "gap_end": "datetime"
+      },
+      {
+        "missing_bars": "int"
+      }
+    ],
+    "issue_fields": [
+      {
+        "timestamp": "datetime"
+      },
+      {
+        "issue_type": "str"
+      },
+      {
+        "detail": "str"
+      }
+    ],
+    "functions": [
+      {
+        "name": "check_quality",
+        "signature": "(df: pd.DataFrame, timeframe: Timeframe, rth_only: bool = True) -> QualityReport"
+      },
+      {
+        "name": "detect_gaps",
+        "signature": "(df: pd.DataFrame, timeframe: Timeframe, rth_only: bool = True) -> list[GapInfo]"
+      },
+      {
+        "name": "detect_duplicates",
+        "signature": "(df: pd.DataFrame) -> list[datetime]"
+      },
+      {
+        "name": "validate_timestamps",
+        "signature": "(df: pd.DataFrame) -> list[TimestampIssue]"
+      }
+    ],
+    "exported_from": "src/orbust/data/quality.py"
+  },
+  "acceptance_criteria": [
+    "detect_gaps finds missing bars within RTH when rth_only=True",
+    "detect_gaps does not flag overnight gaps as issues",
+    "detect_gaps does not flag weekend gaps as issues",
+    "detect_duplicates identifies repeated timestamps",
+    "validate_timestamps flags non-UTC-aware timestamps",
+    "validate_timestamps flags timestamps not aligned to timeframe boundary",
+    "validate_timestamps flags out-of-order timestamps",
+    "check_quality aggregates all checks into QualityReport",
+    "QualityReport.is_clean is True when no issues exist",
+    "Works with wide-format DataFrames",
+    "GapInfo includes correct missing_bars count",
+    "All dataclasses are importable from orbust.data.quality"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_quality.py -v",
+    "python -c \"from orbust.data.quality import check_quality, QualityReport\""
+  ],
+  "non_goals": [
+    "Auto-repair of data issues",
+    "Statistical outlier detection",
+    "Volume anomaly detection"
+  ],
+  "review_group": "data-quality",
+  "risk_level": "low",
+  "estimated_lines": 175,
+  "task_id": "WI-2.6",
+  "phase": "phase-02"
+}
