@@ -209,6 +209,9 @@ class AlpacaFetcher:
         """
         timeframe_str = self._resolve_timeframe(timeframe)
 
+        # Deduplicate symbols to avoid redundant API calls
+        symbols = list(dict.fromkeys(symbols))
+
         # Validate inputs
         if start.tzinfo is None or end.tzinfo is None:
             raise ValueError("start and end must be timezone-aware datetimes")
@@ -477,12 +480,16 @@ class AlpacaFetcher:
             t (timestamp), o, h, l, c, v, n, vw
 
         Returns a DataFrame with:
-            - UTC DatetimeIndex
-            - Columns named ``{SYM}_{field}`` (e.g. ``XOM_close``)
+            - UTC DatetimeIndex (sorted)
+            - Columns named ``{SYM}_{field}`` (e.g. ``XOM_open``),
+              ordered by symbol then OHLCV convention
             - Missing bar fields represented as NaN (not 0.0)
-            - Empty responses still produce a DataFrame with the expected column schema
+            - All requested symbols present as columns, even if no data returned
         """
-        all_series: list[pd.Series] = []
+        # Canonical column list: {SYM1}_open, {SYM1}_high, ..., {SYM2}_open, ...
+        expected_columns = [f"{sym}_{field}" for sym in symbols for field in ALL_FIELDS]
+
+        all_dfs: list[pd.DataFrame] = []
 
         for symbol, bars in symbol_bars.items():
             if not bars:
@@ -515,28 +522,25 @@ class AlpacaFetcher:
                     # Use NaN for missing values — 0.0 would corrupt downstream indicators
                     records[field_name].append(float(val) if val is not None else float("nan"))
 
-            series_list: list[pd.Series] = []
-            for field_name in ALL_FIELDS:
-                col_name = f"{symbol}_{field_name}"
-                series_list.append(pd.Series(records[field_name], index=timestamps, name=col_name))
-            all_series.extend(series_list)
+            # Create per-symbol DataFrame for cleaner concatenation
+            symbol_df = pd.DataFrame(records, index=timestamps)
+            symbol_df.columns = [f"{symbol}_{f}" for f in ALL_FIELDS]
+            all_dfs.append(symbol_df)
 
-        if not all_series:
-            # Return empty DataFrame with expected column schema
-            columns = [f"{sym}_{field}" for sym in symbols for field in ALL_FIELDS]
+        if not all_dfs:
             return pd.DataFrame(
-                {col: pd.Series(dtype=float) for col in columns},
                 index=pd.DatetimeIndex([], tz=UTC, name="timestamp"),
+                columns=expected_columns,
+                dtype=float,
             )
 
-        df = pd.concat(all_series, axis=1)
+        df = pd.concat(all_dfs, axis=1)
         df.index.name = "timestamp"
-
-        # Guarantee explicit DatetimeIndex with UTC timezone
         df.index = pd.DatetimeIndex(df.index, tz=UTC)
+        df = df.sort_index()
 
-        # Sort columns consistently: {SYM1}_open, {SYM1}_high, ..., {SYM2}_open, ...
-        df = df[sorted(df.columns)]
+        # Reindex ensures all requested symbols are present and in expected order
+        df = df.reindex(columns=expected_columns)
 
         return df
 
