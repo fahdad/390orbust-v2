@@ -8,5 +8,6 @@ Components:
 """
 
 from orbust.data.provider import DataProvider as DataProvider
+from orbust.data.store import ParquetStore as ParquetStore
 
-__all__ = ["DataProvider"]
+__all__ = ["DataProvider", "ParquetStore"]

@@ -1,4 +1,4 @@
-# 390OrBust v2 — Work Item Schema & Index
+# 390OrBust v2 — Work Item Schema & Phase Index
 
 work_item_schema:
   id: "WI-{phase}.{sequence}"
@@ -41,7 +41,8 @@ work_item_schema:
 status_legend:
   not_started: "Defined but not begun"
   in_progress: "Currently being implemented"
-  complete: "Code written, tests pass, committed to branch"
+  in_pr: "Submitted for review (open PR)"
+  complete: "Code written, tests pass, committed"
   merged: "PR merged to main"
   blocked: "Waiting on dependency"
   cancelled: "No longer needed"
@@ -55,45 +56,45 @@ phase_index:
   - phase: 2
     name: "Data Pipeline"
     sessions: "4-6"
-    status: "Ready to decompose"
+    status: "in_progress"
     pr_groups: "data-foundation, alpaca-integration, data-quality"
   - phase: 3
     name: "Feature Engineering"
     sessions: "7-10"
-    status: "Decompose after P2"
+    status: "planned"
     pr_groups: "registry-core, builtins-returns, builtins-advanced, parity-validation"
   - phase: 4
     name: "Strategy Framework"
     sessions: "11-14"
-    status: "Decompose after P3"
+    status: "planned"
     pr_groups: "strategy-contract, training-harness, gpu-cli"
   - phase: 5
     name: "Evaluation"
     sessions: "15-18"
-    status: "Decompose after P4"
+    status: "planned"
     pr_groups: "walk-forward, backtester, metrics-audit"
   - phase: 6
     name: "Risk"
     sessions: "19-21"
-    status: "Decompose after P5"
+    status: "planned"
     pr_groups: "interpreter, risk-gate, logging"
   - phase: 7
     name: "Execution"
     sessions: "22-25"
-    status: "Decompose after P6"
+    status: "planned"
     pr_groups: "broker-abc, order-lifecycle, crash-recovery"
   - phase: 8
     name: "Dashboard"
     sessions: "26-30"
-    status: "Decompose after P7"
+    status: "planned"
     pr_groups: "research-api, ops-api, views"
   - phase: 9
     name: "v1 Port"
     sessions: "31-33"
-    status: "Decompose after P8"
+    status: "planned"
     pr_groups: "parity-audit, model-implementation, validation"
   - phase: 10
     name: "Architecture Search"
     sessions: "34+"
-    status: "Decompose after P9"
+    status: "planned"
     pr_groups: "Separate experiments per architecture"

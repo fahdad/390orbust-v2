@@ -1,0 +1,77 @@
+{
+  "id": "WI-WI-2-5",
+  "title": "Implement AlpacaBarProvider with caching and RTH integration",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.2",
+    "WI-2.3",
+    "WI-2.4"
+  ],
+  "objective": "A complete DataProvider implementation that fetches from Alpaca, caches to Parquet, applies RTH filtering, and only re-fetches missing ranges",
+  "files_to_create": [
+    "tests/unit/data/test_alpaca_provider.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/alpaca.py",
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/data/provider.py",
+    "src/orbust/data/store.py",
+    "src/orbust/data/rth.py",
+    "src/orbust/config.py",
+    "src/orbust/log.py"
+  ],
+  "interface_contract": {
+    "class": "AlpacaBarProvider",
+    "inherits": "DataProvider",
+    "constructor": "(self, config: SystemConfig, rth_only: bool = True)",
+    "methods": [
+      {
+        "name": "get_bars",
+        "signature": "(self, symbols: list[str], start: datetime, end: datetime, timeframe: Timeframe) -> pd.DataFrame",
+        "behavior": "Check cache -> fetch missing ranges -> cache new data -> apply RTH if configured -> return merged result"
+      },
+      {
+        "name": "stream_bars",
+        "signature": "(self, symbols: list[str], timeframe: Timeframe) -> Iterator[BarEvent]",
+        "behavior": "Placeholder that raises NotImplementedError for Phase 2"
+      },
+      {
+        "name": "available_fields",
+        "signature": "(self) -> list[str]",
+        "returns": "['open', 'high', 'low', 'close', 'volume', 'trade_count', 'vwap']"
+      }
+    ],
+    "exported_from": "src/orbust/data.alpaca"
+  },
+  "acceptance_criteria": [
+    "AlpacaBarProvider is a valid DataProvider subclass",
+    "get_bars returns cached data without calling Alpaca API when fully cached",
+    "get_bars fetches only missing date ranges when partially cached",
+    "get_bars caches fetched data to Parquet automatically",
+    "RTH filtering applied when rth_only=True",
+    "RTH filtering skipped when rth_only=False",
+    "Returned DataFrame has UTC DatetimeIndex",
+    "Returned DataFrame has {SYM}_{field} column format",
+    "available_fields returns all 7 bar fields",
+    "stream_bars raises NotImplementedError",
+    "Temporal alignment verified (all symbols have same timestamps)",
+    "Logger records cache hit/miss statistics"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_alpaca_provider.py -v",
+    "python -c \"from orbust.data import AlpacaBarProvider\""
+  ],
+  "non_goals": [
+    "Live streaming implementation",
+    "Concurrent symbol fetching",
+    "Background refresh"
+  ],
+  "review_group": "alpaca-integration",
+  "risk_level": "medium",
+  "estimated_lines": 160,
+  "task_id": "WI-2.5",
+  "phase": "phase-02"
+}

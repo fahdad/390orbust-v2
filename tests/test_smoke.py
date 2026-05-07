@@ -36,8 +36,9 @@ def test_bar_event_validation() -> None:
     import pytest
 
     with pytest.raises(ValueError, match=r"low.*>.*high"):
-        BarEvent(symbol="XOM", timestamp=ts, open=100,
-                 high=99, low=101, close=100, volume=1_000_000)
+        BarEvent(
+            symbol="XOM", timestamp=ts, open=100, high=99, low=101, close=100, volume=1_000_000
+        )
 
 
 def test_proposed_action_defaults() -> None:

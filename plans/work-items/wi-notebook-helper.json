@@ -1,0 +1,69 @@
+{
+  "id": "WI-WI-2-8",
+  "title": "Create data exploration notebook helper",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.5",
+    "WI-2.6"
+  ],
+  "objective": "A notebook-friendly helper module provides one-liner functions for fetching, inspecting, and visualizing bar data in Jupyter",
+  "files_to_create": [
+    "src/orbust/data/notebook.py",
+    "notebooks/data_exploration.py",
+    "tests/unit/data/test_notebook_helpers.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/data/alpaca.py",
+    "src/orbust/data/quality.py",
+    "src/orbust/config.py"
+  ],
+  "interface_contract": {
+    "functions": [
+      {
+        "name": "quick_fetch",
+        "signature": "(symbols: list[str], days_back: int = 5, timeframe: Timeframe = Timeframe.MINUTE_1) -> pd.DataFrame",
+        "returns": "Wide-format DataFrame ready for analysis"
+      },
+      {
+        "name": "summarize",
+        "signature": "(df: pd.DataFrame) -> pd.DataFrame",
+        "returns": "Summary stats per symbol: count, gaps, date range, completeness %"
+      },
+      {
+        "name": "check",
+        "signature": "(df: pd.DataFrame, timeframe: Timeframe = Timeframe.MINUTE_1) -> QualityReport",
+        "returns": "Quality report with pretty __repr__"
+      }
+    ],
+    "exported_from": "src/orbust/data.notebook"
+  },
+  "acceptance_criteria": [
+    "quick_fetch creates provider from default config and returns DataFrame",
+    "summarize returns per-symbol statistics DataFrame",
+    "check wraps quality.check_quality with sensible defaults",
+    "All functions have docstrings suitable for help() in notebook",
+    "notebook.py importable without side effects",
+    "notebooks/data_exploration.py is a valid Python script (percent format)",
+    "Test verifies summarize output shape and columns",
+    "Test verifies check returns QualityReport instance"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_notebook_helpers.py -v",
+    "python -c \"from orbust.data.notebook import quick_fetch, summarize, check\"",
+    "python -c \"import ast; ast.parse(open('notebooks/data_exploration.py').read())\""
+  ],
+  "non_goals": [
+    "Matplotlib/plotly visualization (deferred)",
+    "Interactive widgets",
+    "Auto-display in notebook"
+  ],
+  "review_group": "data-quality",
+  "risk_level": "low",
+  "estimated_lines": 120,
+  "task_id": "WI-2.8",
+  "phase": "phase-02"
+}

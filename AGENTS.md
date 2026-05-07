@@ -27,29 +27,44 @@ DataProvider → FeatureRegistry → StrategyEngine → SignalInterpreter + Risk
 
 ---
 
+## Session Start — Do This Every Time
+
+1. **Read sessions.log tail** — `tail -5 plans/sessions.log` for context on what happened last session
+2. **Read ledger** — `plans/ledger.json` for live status of all work items
+3. **Find next task** — pick the lowest-numbered phase not marked "completed", then the lowest-numbered `not_started` or `in_pr` work item inside it
+4. **Load the WI JSON** — read that work item's file from `plans/work-items/`
+5. **Report** — tell the user what the next task is, what it requires, and wait for their go-ahead. Do NOT execute until they say "go" or "execute [WI-ID]".
+
+The session flow is:
+- User triggers each work item manually
+- After you implement it, user runs their own verification
+- User says "End session" when done
+- Run `plans/scripts/end_session.py` to close out
+
+---
+
 ## Current State
 
 **Phase 1 (Foundation): COMPLETE**
-Project skeleton, types.py (all dataclasses + enums), config.py (Pydantic YAML),
-log.py (structlog), service.py (typer CLI), pyproject.toml (uv, torch 2.11),
+Project skeleton, types.py, config.py, log.py, service.py, pyproject.toml,
 ruff/mypy/pytest configs, .pre-commit-config.yaml, tests/conftest.py,
 8 smoke tests, git remote, docs/seed (kickstart + research prompt).
 
 **Phase 2 (Data Pipeline): IN PROGRESS — PR #1 open**
 
-| Item | Status | Branch/PR |
+| Item | Status | Details |
 |---|---|---|
-| WI-2.1: DataProvider ABC | **Done** — in PR | `wi/p2-data-foundation` → PR #1 |
-| WI-2.2: ParquetStore | **Done** — in PR | same branch |
-| WI-2.3: AlpacaFetcher | Not started | `wi/p2-alpaca-integration` |
-| WI-2.4: RTH filtering | Not started | same branch |
-| WI-2.5: AlpacaBarProvider | Not started | same branch |
-| WI-2.6: Data quality checks | Not started | `wi/p2-data-quality` |
-| WI-2.7: Integration tests | Not started | same branch |
-| WI-2.8: Notebook helper | Not started | same branch |
+| WI-02-01: DataProvider ABC | in_pr | PR #1 (wi/p2-data-foundation) |
+| WI-02-02: ParquetStore | in_pr | PR #1 (wi/p2-data-foundation) |
+| WI-02-03: AlpacaFetcher | not_started | Next PR |
+| WI-02-04: RTH filtering | not_started | Next PR |
+| WI-02-05: AlpacaBarProvider | not_started | Next PR |
+| WI-02-06: Data quality checks | not_started | Future PR |
+| WI-02-07: Integration tests | not_started | Future PR |
+| WI-02-08: Notebook helper | not_started | Future PR |
 
 **PR #1** (`wi/p2-data-foundation → main`):
-Open at https://github.com/fahdad/390orbust-v2/pull/1
+https://github.com/fahdad/390orbust-v2/pull/1
 Reviews: 2 rounds from gemini-code-assist, findings addressed.
 Next: finish review pipeline → rebase-merge to main.
 
@@ -71,13 +86,7 @@ See `plans/git-workflow.md` for full details.
 
 1. Finish review on PR #1 (merge to main)
 2. Start PR 2: `wi/p2-alpaca-integration`
-   - WI-2.3: AlpacaFetcher (paginate, rate-limit, error handling)
-   - WI-2.4: RTH filtering (09:30-16:00 ET Mon-Fri)
-   - WI-2.5: AlpacaBarProvider (cache-aware, RTH-applied, full DataProvider)
 3. Then PR 3: `wi/p2-data-quality`
-   - WI-2.6: Data quality checks
-   - WI-2.7: Integration tests
-   - WI-2.8: Notebook helper
 4. Then Phase 3 decomposition (Feature Engineering)
 
 ---
@@ -87,9 +96,13 @@ See `plans/git-workflow.md` for full details.
 | Asset | Location |
 |---|---|
 | Source code | `src/orbust/` |
-| Work item plans | `plans/phase-02-data.yaml` |
-| Phase index | `plans/_index.yaml` |
+| Work item files | `plans/work-items/*.json` |
+| Live status | `plans/ledger.json` |
+| Session history | `plans/sessions.log` |
+| Session closeout | `plans/scripts/end_session.py` |
+| Render WI → markdown | `plans/scripts/render_wi.py` |
 | Git workflow | `plans/git-workflow.md` |
+| Phase index | `plans/_index.yaml` |
 | Architecture spec | `docs/seed/390OrBust_v2_Kickstart.md` |
 | Research prompt | `docs/seed/390OrBust_Deep_Research_Prompt.md` |
 | Tests | `tests/` |
@@ -103,8 +116,11 @@ See `plans/git-workflow.md` for full details.
 uv sync --group dev          # Install deps (first time or after pyproject.toml changes)
 uv run pytest tests/ -v      # Run test suite (33 tests)
 uv run ruff check src/       # Lint
-uv run mypy src/             # Type check
-python -m orbust.service --help  # CLI skeleton
+uv run python -m orbust.service --help  # CLI skeleton
+# Session closeout
+uv run python plans/scripts/end_session.py --update WI-02-01=merged --message "..." --commit "..." --push
+# Render work item as markdown brief
+uv run python plans/scripts/render_wi.py wi-data-provider-abc.json
 ```
 
 ---

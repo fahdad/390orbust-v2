@@ -1,0 +1,72 @@
+{
+  "id": "WI-WI-2-4",
+  "title": "Implement RTH filtering utility",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.1"
+  ],
+  "objective": "A reusable RTH filter function removes bars outside regular trading hours (09:30-16:00 ET, Mon-Fri) from any wide-format DataFrame",
+  "files_to_create": [
+    "src/orbust/data/rth.py",
+    "tests/unit/data/test_rth.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/types.py",
+    "tests/conftest.py"
+  ],
+  "interface_contract": {
+    "functions": [
+      {
+        "name": "filter_rth",
+        "signature": "(df: pd.DataFrame) -> pd.DataFrame",
+        "returns": "DataFrame with only RTH bars"
+      },
+      {
+        "name": "is_rth",
+        "signature": "(timestamp: datetime) -> bool",
+        "returns": "True if timestamp falls within RTH"
+      },
+      {
+        "name": "get_rth_minutes",
+        "signature": "(date: date) -> list[datetime]",
+        "returns": "List of all RTH minute timestamps for a given date"
+      }
+    ],
+    "constants": {
+      "RTH_START_ET": "time(9, 30)",
+      "RTH_END_ET": "time(16, 0)"
+    },
+    "exported_from": "src/orbust/data/rth.py"
+  },
+  "acceptance_criteria": [
+    "filter_rth removes pre-market bars (before 09:30 ET)",
+    "filter_rth removes after-hours bars (at or after 16:00 ET)",
+    "filter_rth removes weekend bars",
+    "filter_rth preserves bar at exactly 09:30 ET",
+    "filter_rth removes bar at exactly 16:00 ET (last bar is 15:59)",
+    "Works correctly across DST transitions (EST/EDT)",
+    "Input DataFrame with UTC index is handled correctly",
+    "Returns DataFrame with same column structure",
+    "Empty DataFrame input returns empty DataFrame",
+    "is_rth correctly classifies edge-case timestamps",
+    "get_rth_minutes returns exactly 390 timestamps for a trading day"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_rth.py -v",
+    "python -c \"from orbust.data.rth import filter_rth, is_rth\""
+  ],
+  "non_goals": [
+    "Holiday calendar (treat holidays as regular weekdays for now)",
+    "Half-day handling",
+    "Extended hours configuration"
+  ],
+  "review_group": "alpaca-integration",
+  "risk_level": "low",
+  "estimated_lines": 85,
+  "task_id": "WI-2.4",
+  "phase": "phase-02"
+}

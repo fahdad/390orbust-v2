@@ -1,0 +1,76 @@
+{
+  "id": "WI-WI-2-2",
+  "title": "Implement Parquet store writer and reader",
+  "module": "data",
+  "status": "not_started",
+  "depends_on": [
+    "WI-2.1"
+  ],
+  "objective": "A ParquetStore class can write wide-format DataFrames to partitioned Parquet files and read them back with date-range filtering",
+  "files_to_create": [
+    "src/orbust/data/store.py",
+    "tests/unit/data/test_store.py"
+  ],
+  "files_to_modify": [
+    "src/orbust/data/__init__.py"
+  ],
+  "context_files": [
+    "src/orbust/types.py",
+    "src/orbust/config.py",
+    "src/orbust/data/provider.py",
+    "tests/conftest.py"
+  ],
+  "interface_contract": {
+    "class": "ParquetStore",
+    "constructor": "(self, base_dir: Path, timeframe: Timeframe)",
+    "methods": [
+      {
+        "name": "write",
+        "signature": "(self, df: pd.DataFrame, symbols: list[str]) -> Path",
+        "returns": "Path to written Parquet file"
+      },
+      {
+        "name": "read",
+        "signature": "(self, symbols: list[str], start: datetime, end: datetime) -> pd.DataFrame | None",
+        "returns": "Wide-format DataFrame or None if no data exists"
+      },
+      {
+        "name": "get_cached_ranges",
+        "signature": "(self, symbols: list[str]) -> list[tuple[datetime, datetime]]",
+        "returns": "List of (start, end) tuples representing cached date ranges"
+      },
+      {
+        "name": "find_missing_ranges",
+        "signature": "(self, symbols: list[str], start: datetime, end: datetime) -> list[tuple[datetime, datetime]]",
+        "returns": "List of (start, end) tuples not yet cached"
+      }
+    ],
+    "exported_from": "src/orbust/data/store.py"
+  },
+  "acceptance_criteria": [
+    "write() creates a Parquet file at predictable path based on timeframe and date",
+    "read() returns DataFrame with UTC DatetimeIndex",
+    "read() returns None when no cached data exists",
+    "read() filters to requested date range",
+    "Written and read DataFrames are equal (round-trip fidelity)",
+    "Column names follow {SYM}_{field} wide format",
+    "DatetimeIndex is timezone-aware UTC after read",
+    "get_cached_ranges returns correct ranges after writes",
+    "find_missing_ranges correctly identifies gaps",
+    "ParquetStore is importable from orbust.data"
+  ],
+  "validation": [
+    "pytest tests/unit/data/test_store.py -v",
+    "python -c \"from orbust.data import ParquetStore\""
+  ],
+  "non_goals": [
+    "SQLite metadata tracking",
+    "Concurrent write safety",
+    "Compression tuning"
+  ],
+  "review_group": "data-foundation",
+  "risk_level": "low",
+  "estimated_lines": 180,
+  "task_id": "WI-2.2",
+  "phase": "phase-02"
+}

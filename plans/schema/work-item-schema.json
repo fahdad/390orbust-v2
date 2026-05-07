@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "390OrBust Work Item",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "phase",
+    "module",
+    "status",
+    "depends_on",
+    "objective",
+    "acceptance_criteria"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier: WI-{phase}-{sequence}"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Original dotted ID: WI-{phase}.{sequence}"
+    },
+    "title": {
+      "type": "string",
+      "description": "Concise action-oriented title"
+    },
+    "phase": {
+      "type": "string",
+      "pattern": "^phase-\\d{2}$"
+    },
+    "module": {
+      "type": "string",
+      "enum": [
+        "data",
+        "features",
+        "strategy",
+        "evaluation",
+        "execution",
+        "dashboard",
+        "ledger"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "complete",
+        "merged",
+        "blocked",
+        "in_pr"
+      ]
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "objective": {
+      "type": "string"
+    },
+    "files_to_create": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "files_to_modify": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_to_create": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interface_contract": {
+      "type": "object"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_group": {
+      "type": "string"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "estimated_lines": {
+      "type": "integer"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}
