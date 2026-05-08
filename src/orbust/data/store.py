@@ -267,10 +267,10 @@ class ParquetStore:
         """
         # Known multi-word field names that appear after the symbol prefix
         _known_fields = {"open", "high", "low", "close", "volume", "trade_count", "vwap"}
-        # Try splitting on each known field marker
-        parts = col_name.rsplit("_", 1)
-        if len(parts) == 2 and parts[1] in _known_fields:
-            return parts[0]
+        for field in _known_fields:
+            suffix = f"_{field}"
+            if col_name.endswith(suffix):
+                return col_name[: -len(suffix)]
         # Fallback: split at the first underscore (SYM_rest)
         first_part = col_name.split("_", 1)[0]
         return first_part

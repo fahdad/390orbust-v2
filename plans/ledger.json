@@ -1,9 +1,9 @@
 {
-  "updated": "2026-05-08T12:25:00Z",
+  "updated": "2026-05-08T12:35:00Z",
   "notes": "Ledger tracks live status of each work item. Update via end-session.py.",
   "phase_states": {
     "phase-01": "completed",
-    "phase-02": "in_progress",
+    "phase-02": "completed",
     "phase-03": "planned",
     "phase-04": "planned",
     "phase-05": "planned",
@@ -43,8 +43,8 @@
       "notes": "Committed directly to main. 10 integration tests."
     },
     "WI-2.8": {
-      "status": "not_started",
-      "notes": ""
+      "status": "merged",
+      "notes": "Committed directly to main. Phase 2 complete."
     }
   }
 }

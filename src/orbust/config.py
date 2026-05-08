@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
     from orbust.types import CostModel, WalkForwardPolicy
@@ -82,10 +82,10 @@ class SystemConfig(BaseSettings):
     gpu: GpuConfig = GpuConfig()
     dashboard: DashboardConfig = DashboardConfig()
 
-    class Settings:
-        env_prefix = "ORBUST_"
-        env_nested_delimiter = "__"
-        yaml_file: str = "config/system.yaml"
+    model_config = SettingsConfigDict(
+        env_prefix="ORBUST_",
+        env_nested_delimiter="__",
+    )
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> SystemConfig:
