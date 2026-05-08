@@ -262,11 +262,9 @@ def validate_timestamps(
         delta_us = int(delta.total_seconds() * 1_000_000)
         # Ensure index is UTC for consistent comparison
         utc_idx = idx.tz_convert("UTC") if idx.tz is not None else idx
-        # Check alignment relative to the first timestamp (avoids epoch drift)
+        # Check alignment to true timeframe boundaries (Unix epoch)
         # NOTE: .asi8 returns int64 in the index's native resolution
-        # (microseconds for datetime64[us], nanoseconds for datetime64[ns])
-        offset = utc_idx.asi8 - utc_idx.asi8[0]
-        misaligned_mask = (offset % delta_us) != 0
+        misaligned_mask = (utc_idx.asi8 % delta_us) != 0
         misaligned = idx[misaligned_mask].tolist()
         if misaligned:
             issues.append(
