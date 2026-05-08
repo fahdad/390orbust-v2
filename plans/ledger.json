@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-07T13:40:25Z",
+  "updated": "2026-05-08T11:45:00Z",
   "notes": "Ledger tracks live status of each work item. Update via end-session.py.",
   "phase_states": {
     "phase-01": "completed",
@@ -31,8 +31,8 @@
       "notes": ""
     },
     "WI-2.5": {
-      "status": "not_started",
-      "notes": ""
+      "status": "merged",
+      "notes": "PR #4 (wi/p2-alpaca-provider). rebase-merged."
     },
     "WI-2.6": {
       "status": "not_started",

@@ -11,6 +11,8 @@ Components:
 from orbust.data.alpaca import AlpacaBarProvider as AlpacaBarProvider
 from orbust.data.alpaca import AlpacaFetcher as AlpacaFetcher
 from orbust.data.provider import DataProvider as DataProvider
+from orbust.data.quality import QualityReport as QualityReport
+from orbust.data.quality import check_quality as check_quality
 from orbust.data.rth import filter_rth as filter_rth
 from orbust.data.rth import get_rth_minutes as get_rth_minutes
 from orbust.data.rth import is_rth as is_rth
@@ -21,6 +23,8 @@ __all__ = [
     "AlpacaFetcher",
     "DataProvider",
     "ParquetStore",
+    "QualityReport",
+    "check_quality",
     "filter_rth",
     "get_rth_minutes",
     "is_rth",
