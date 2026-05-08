@@ -1,218 +1,275 @@
-"""Tests for RTH filtering — DST-aware, boundary conditions, edge cases."""
+"""Tests for RTH (Regular Trading Hours) filtering — is_rth, filter_rth, get_rth_minutes."""
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
-from zoneinfo import ZoneInfo
+from datetime import UTC, date, datetime
 
 import pandas as pd
-import pytest
 
-from orbust.data.rth import (
-    RTH_END_ET,
-    RTH_START_ET,
-    filter_rth,
-    get_rth_minutes,
-    is_rth,
-)
-
-_ET = ZoneInfo("America/New_York")
-_UTC = ZoneInfo("UTC")
-
-
-# Helpers for test readability
-def _utc(y: int, m: int, d: int, h: int, mi: int) -> datetime:
-    return datetime(y, m, d, h, mi, tzinfo=_UTC)
-
-
-def _et(y: int, m: int, d: int, h: int, mi: int) -> datetime:
-    return datetime(y, m, d, h, mi, tzinfo=_ET)
-
+from orbust.data.rth import filter_rth, get_rth_minutes, is_rth
 
 # ═══════════════════════════════════════════════════════════════
-# is_rth
+# is_rth — classification of individual timestamps
 # ═══════════════════════════════════════════════════════════════
 
 
 class TestIsRth:
-    def test_inside_rth(self) -> None:
-        """09:30 ET is inside RTH."""
-        assert is_rth(_et(2023, 3, 1, 9, 30))
+    """is_rth correctly classifies timestamps at various boundaries."""
 
-    def test_after_hours(self) -> None:
-        """16:00 ET is outside RTH (exclusive boundary)."""
-        assert not is_rth(_et(2023, 3, 1, 16, 0))
+    # EST (winter): UTC-5, 09:30 ET = 14:30 UTC
+    # Use a winter weekday: 2023-03-02 is a Thursday
+    WINTER_WEEKDAY = date(2023, 3, 2)  # Thursday, before DST
 
-    def test_pre_market(self) -> None:
-        """09:29 ET is outside RTH."""
-        assert not is_rth(_et(2023, 3, 1, 9, 29))
+    # EDT (summer): UTC-4, 09:30 ET = 13:30 UTC
+    # Use a summer weekday: 2023-06-15 is a Thursday
+    SUMMER_WEEKDAY = date(2023, 6, 15)  # Thursday
 
-    def test_last_minute(self) -> None:
-        """15:59 ET is inside RTH (last valid minute)."""
-        assert is_rth(_et(2023, 3, 1, 15, 59))
+    def test_pre_market_winter(self) -> None:
+        """Pre-market bar (before 09:30 ET) is rejected."""
+        # 09:29 ET = 14:29 UTC
+        ts = datetime(2023, 3, 2, 14, 29, tzinfo=UTC)
+        assert is_rth(ts) is False
 
-    def test_weekend(self) -> None:
-        """Saturday is outside RTH."""
-        # March 4, 2023 is a Saturday
-        assert not is_rth(_et(2023, 3, 4, 10, 0))
+    def test_exactly_open_winter(self) -> None:
+        """Bar at exactly 09:30 ET is included (opening bar)."""
+        # 09:30 ET = 14:30 UTC
+        ts = datetime(2023, 3, 2, 14, 30, tzinfo=UTC)
+        assert is_rth(ts) is True
 
-    def test_sunday(self) -> None:
-        """Sunday is outside RTH."""
-        assert not is_rth(_et(2023, 3, 5, 10, 0))
+    def test_mid_session_winter(self) -> None:
+        """Mid-session bar is included."""
+        ts = datetime(2023, 3, 2, 17, 0, tzinfo=UTC)  # 12:00 ET
+        assert is_rth(ts) is True
 
-    def test_midday_monday(self) -> None:
-        """Monday midday is inside RTH."""
-        # March 6, 2023 is a Monday
-        assert is_rth(_et(2023, 3, 6, 12, 0))
+    def test_exactly_close_winter(self) -> None:
+        """Bar at exactly 16:00 ET is excluded (last bar is 15:59)."""
+        # 16:00 ET = 21:00 UTC
+        ts = datetime(2023, 3, 2, 21, 0, tzinfo=UTC)
+        assert is_rth(ts) is False
 
-    def test_utc_input(self) -> None:
-        """UTC timestamp converts correctly to ET for RTH check."""
-        # 14:30 UTC on a weekday = 09:30 ET (standard time)
-        assert is_rth(_utc(2023, 3, 1, 14, 30))
+    def test_last_minute_winter(self) -> None:
+        """Last valid bar at 15:59 ET is included."""
+        # 15:59 ET = 20:59 UTC
+        ts = datetime(2023, 3, 2, 20, 59, tzinfo=UTC)
+        assert is_rth(ts) is True
 
-    def test_utc_after_hours(self) -> None:
-        """21:00 UTC on a weekday = 16:00 ET — outside RTH."""
-        assert not is_rth(_utc(2023, 3, 1, 21, 0))
+    def test_after_hours_winter(self) -> None:
+        """After-hours bar (after 16:00 ET) is rejected."""
+        # 16:01 ET = 21:01 UTC
+        ts = datetime(2023, 3, 2, 21, 1, tzinfo=UTC)
+        assert is_rth(ts) is False
+
+    def test_pre_market_summer(self) -> None:
+        """Pre-market bar (before 09:30 ET) in EDT."""
+        # 09:29 ET = 13:29 UTC
+        ts = datetime(2023, 6, 15, 13, 29, tzinfo=UTC)
+        assert is_rth(ts) is False
+
+    def test_exactly_open_summer(self) -> None:
+        """Bar at exactly 09:30 ET in EDT is included."""
+        # 09:30 ET = 13:30 UTC
+        ts = datetime(2023, 6, 15, 13, 30, tzinfo=UTC)
+        assert is_rth(ts) is True
+
+    def test_exactly_close_summer(self) -> None:
+        """Bar at exactly 16:00 ET in EDT is excluded."""
+        # 16:00 ET = 20:00 UTC
+        ts = datetime(2023, 6, 15, 20, 0, tzinfo=UTC)
+        assert is_rth(ts) is False
+
+    def test_last_minute_summer(self) -> None:
+        """Last valid bar at 15:59 ET in EDT is included."""
+        # 15:59 ET = 19:59 UTC
+        ts = datetime(2023, 6, 15, 19, 59, tzinfo=UTC)
+        assert is_rth(ts) is True
+
+    def test_weekend_rejected(self) -> None:
+        """Saturday and Sunday are rejected regardless of time."""
+        # Saturday 2023-03-04 at 14:30 UTC (09:30 ET)
+        sat = datetime(2023, 3, 4, 14, 30, tzinfo=UTC)
+        assert is_rth(sat) is False
+
+        # Sunday 2023-03-05 at 14:30 UTC
+        sun = datetime(2023, 3, 5, 14, 30, tzinfo=UTC)
+        assert is_rth(sun) is False
 
     def test_naive_datetime_treated_as_utc(self) -> None:
         """Naive datetime is treated as UTC."""
-        assert is_rth(datetime(2023, 3, 1, 14, 30))  # 09:30 ET
+        ts = datetime(2023, 3, 2, 14, 30)  # 09:30 ET if UTC
+        assert is_rth(ts) is True
 
-    def test_rth_constants(self) -> None:
-        """RTH constants are set correctly."""
-        assert time(9, 30) == RTH_START_ET
-        assert time(16, 0) == RTH_END_ET
-
-
-# ═══════════════════════════════════════════════════════════════
-# DST transitions
-# ═══════════════════════════════════════════════════════════════
-
-
-class TestDstTransitions:
-    """RTH filtering must work correctly across DST boundaries."""
-
-    def test_est_standard_time(self) -> None:
-        """November trading day in EST (UTC-5)."""
-        # 14:30 UTC = 09:30 EST
-        assert is_rth(_utc(2023, 11, 1, 14, 30))
-        # 21:00 UTC = 16:00 EST — after hours
-        assert not is_rth(_utc(2023, 11, 1, 21, 0))
-
-    def test_edt_daylight_time(self) -> None:
-        """June trading day in EDT (UTC-4)."""
-        # 13:30 UTC = 09:30 EDT
-        assert is_rth(_utc(2023, 6, 1, 13, 30))
-        # 20:00 UTC = 16:00 EDT — after hours
-        assert not is_rth(_utc(2023, 6, 1, 20, 0))
-
-    def test_spring_forward_march(self) -> None:
-        """DST spring-forward: clocks skip 2:00 ET → 3:00 ET."""
-        # March 12, 2023 is spring-forward day (Sunday)
-        # 09:30 EDT exists normally on Monday March 13
-        assert is_rth(_et(2023, 3, 13, 9, 30))  # Monday after spring-forward
-
-    def test_fall_back_november(self) -> None:
-        """DST fall-back: clocks repeat 2:00 ET hour."""
-        # November 5, 2023 is fall-back day (Sunday)
-        # 09:30 EST on Monday Nov 6 is fine
-        assert is_rth(_et(2023, 11, 6, 9, 30))  # Monday after fall-back
+        ts = datetime(2023, 3, 2, 21, 0)  # 16:00 ET if UTC
+        assert is_rth(ts) is False
 
 
 # ═══════════════════════════════════════════════════════════════
-# filter_rth
+# filter_rth — DataFrame filtering
 # ═══════════════════════════════════════════════════════════════
 
 
 class TestFilterRth:
-    @pytest.fixture
-    def trading_day_index(self) -> pd.DatetimeIndex:
-        """390-minute RTH index for a trading day."""
-        start = _et(2023, 3, 1, 9, 30)
-        return pd.date_range(start, periods=390, freq="min", tz=_ET)
+    """filter_rth returns only RTH bars from a DataFrame."""
 
     def test_removes_pre_market(self) -> None:
-        """Bars before 09:30 ET are removed."""
-        idx = pd.DatetimeIndex(
-            [
-                _utc(2023, 3, 1, 13, 0),  # 08:00 ET — pre-market
-                _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
-            ]
+        """Pre-market bars before 09:30 ET are removed."""
+        # Create index spanning pre-market + RTH
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 13, 0),  # 08:00 ET
+            periods=200,
+            freq="min",
+            tz="UTC",
         )
-        df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 1
-        assert result.index[0].hour == 14  # 14:30 UTC = 09:30 ET
+        assert len(result) < len(df)
+        # First bar should be at 14:30 UTC (09:30 ET)
+        assert result.index[0].hour == 14
+        assert result.index[0].minute == 30
 
     def test_removes_after_hours(self) -> None:
-        """Bars at or after 16:00 ET are removed."""
-        idx = pd.DatetimeIndex(
-            [
-                _utc(2023, 3, 1, 20, 30),  # 15:30 ET — inside
-                _utc(2023, 3, 1, 21, 0),  # 16:00 ET — close
-            ]
+        """After-hours bars at or after 16:00 ET are removed."""
+        # Create index spanning RTH + after-hours
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 14, 30),  # 09:30 ET
+            periods=500,
+            freq="min",
+            tz="UTC",
         )
-        df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 1
+        assert len(result) < len(df)
+        # Last bar should be at 20:59 UTC (15:59 ET)
+        last_ts = result.index[-1]
+        assert last_ts.hour == 20
+        assert last_ts.minute == 59
 
-    def test_removes_weekends(self) -> None:
+    def test_removes_weekend_bars(self) -> None:
         """Weekend bars are removed."""
-        idx = pd.DatetimeIndex(
-            [
-                _utc(2023, 3, 3, 14, 30),  # Friday — RTH
-                _utc(2023, 3, 4, 14, 30),  # Saturday — no
-                _utc(2023, 3, 5, 14, 30),  # Sunday — no
-                _utc(2023, 3, 6, 14, 30),  # Monday — RTH
-            ]
+        # Create a range that includes a weekend
+        idx = pd.date_range(
+            datetime(2023, 3, 3, 14, 30),  # Friday
+            periods=3000,
+            freq="min",
+            tz="UTC",
         )
-        df = pd.DataFrame({"close": [1.0, 2.0, 3.0, 4.0]}, index=idx)
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 2
+        # No weekend timestamps should remain
+        for ts in result.index:
+            assert ts.weekday() < 5  # Monday=0, Sunday=6
 
-    def test_preserves_bar_at_0930(self) -> None:
-        """Exactly 09:30 ET is kept."""
-        df = pd.DataFrame({"close": [1.0]}, index=[_et(2023, 3, 1, 9, 30)])
+    def test_preserves_exactly_0930_et(self) -> None:
+        """Bar at exactly 09:30 ET is preserved (opening bar)."""
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 14, 30),  # 09:30 ET
+            periods=5,
+            freq="min",
+            tz="UTC",
+        )
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 1
+        assert len(result) == 5  # all in RTH
+        assert result.index[0].hour == 14 and result.index[0].minute == 30
 
-    def test_removes_bar_at_1600(self) -> None:
-        """Exactly 16:00 ET is removed (last valid bar is 15:59)."""
-        df = pd.DataFrame({"close": [1.0]}, index=[_et(2023, 3, 1, 16, 0)])
+    def test_removes_exactly_1600_et(self) -> None:
+        """Bar at exactly 16:00 ET is removed (last bar is 15:59)."""
+        # Create index ending at 16:00 ET
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 20, 50),  # 15:50 ET
+            periods=20,
+            freq="min",
+            tz="UTC",
+        )
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 0
+        # 16:00 ET = 21:00 UTC — should be removed
+        assert datetime(2023, 3, 2, 21, 0, tzinfo=UTC) not in result.index
+
+    def test_preserves_column_structure(self) -> None:
+        """Output DataFrame has the same columns as input."""
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 14, 30),
+            periods=390,
+            freq="min",
+            tz="UTC",
+        )
+        df = pd.DataFrame(
+            {
+                "XOM_open": [100.0] * 390,
+                "XOM_close": [100.1] * 390,
+                "XOM_volume": [1_000_000] * 390,
+                "XOP_open": [50.0] * 390,
+                "XOP_close": [50.1] * 390,
+            },
+            index=idx,
+        )
+        result = filter_rth(df)
+        assert list(result.columns) == list(df.columns)
+        assert len(result) == 390  # all 390 minutes are in RTH
 
     def test_empty_dataframe(self) -> None:
-        """Empty DataFrame returns empty DataFrame."""
-        df = pd.DataFrame()
-        result = filter_rth(df)
-        assert len(result) == 0
+        """Empty input returns empty DataFrame."""
+        empty = pd.DataFrame()
+        result = filter_rth(empty)
+        assert result.empty
 
-    def test_same_column_structure(self) -> None:
-        """Output DataFrame has same columns as input."""
-        idx = pd.DatetimeIndex([_utc(2023, 3, 1, 14, 30)])
-        df = pd.DataFrame({"open": [1.0], "close": [2.0], "volume": [100]}, index=idx)
-        result = filter_rth(df)
-        assert list(result.columns) == ["open", "close", "volume"]
-
-    def test_utc_index(self) -> None:
-        """UTC-indexed DataFrame is filtered correctly."""
-        # 14:30 UTC = 09:30 ET (standard time)
-        idx = pd.DatetimeIndex(
-            [
-                _utc(2023, 3, 1, 13, 0),  # 08:00 ET — pre-market
-                _utc(2023, 3, 1, 14, 30),  # 09:30 ET — open
-            ]
+    def test_utc_index_on_output(self) -> None:
+        """Output has UTC-aware DatetimeIndex."""
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 14, 30),
+            periods=10,
+            freq="min",
+            tz="UTC",
         )
-        df = pd.DataFrame({"close": [1.0, 2.0]}, index=idx)
+        df = pd.DataFrame({"XOM_close": [100.0] * 10}, index=idx)
         result = filter_rth(df)
-        assert len(result) == 1
+        assert result.index.tz is not None
+        assert str(result.index.tz) == "UTC"
 
-    def test_est_utc_offset(self) -> None:
-        """Works correctly during EST (UTC-5, November)."""
-        # 14:30 UTC = 09:30 EST
-        assert is_rth(_utc(2023, 11, 1, 14, 30))
-        assert not is_rth(_utc(2023, 11, 1, 21, 0))
+    def test_dst_transition_spring(self) -> None:
+        """Works correctly through spring DST transition (EST -> EDT)."""
+        # 2023-03-13 (Monday after DST spring forward)
+        idx = pd.date_range(
+            datetime(2023, 3, 13, 13, 0),  # 09:00 EDT
+            periods=180,
+            freq="min",
+            tz="UTC",
+        )
+        df = pd.DataFrame({"XOM_close": [100.0] * 180}, index=idx)
+        result = filter_rth(df)
+        # First RTH bar should be at 13:30 UTC (09:30 EDT)
+        if len(result) > 0:
+            first_valid = result.index[0]
+            assert first_valid.hour == 13 and first_valid.minute == 30
+        assert len(result) == 150  # 09:30-15:59 EDT = 180 - 30 pre-market
+
+    def test_dst_transition_fall(self) -> None:
+        """Works correctly through fall DST transition (EDT -> EST)."""
+        # 2023-11-06 (Monday after DST fall back)
+        idx = pd.date_range(
+            datetime(2023, 11, 6, 14, 0),  # 09:00 EST
+            periods=180,
+            freq="min",
+            tz="UTC",
+        )
+        df = pd.DataFrame({"XOM_close": [100.0] * 180}, index=idx)
+        result = filter_rth(df)
+        # First RTH bar should be at 14:30 UTC (09:30 EST)
+        if len(result) > 0:
+            first_valid = result.index[0]
+            assert first_valid.hour == 14 and first_valid.minute == 30
+        assert len(result) == 150
+
+    def test_naive_datetime_index(self) -> None:
+        """Naive DatetimeIndex is handled correctly (treated as UTC)."""
+        idx = pd.date_range(
+            datetime(2023, 3, 2, 13, 0),  # no tz
+            periods=200,
+            freq="min",
+        )
+        df = pd.DataFrame({"XOM_close": [100.0] * len(idx)}, index=idx)
+        result = filter_rth(df)
+        assert len(result) > 0  # doesn't crash
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -221,56 +278,52 @@ class TestFilterRth:
 
 
 class TestGetRthMinutes:
-    def test_exactly_390_minutes(self) -> None:
-        """get_rth_minutes returns exactly 390 timestamps for a trading day."""
-        times = get_rth_minutes(date(2023, 3, 1))
-        assert len(times) == 390
+    """get_rth_minutes returns correct number and range of timestamps."""
 
-    def test_all_utc_aware(self) -> None:
-        """All returned timestamps are UTC-aware."""
-        times = get_rth_minutes(date(2023, 3, 1))
-        for t in times:
-            assert t.tzinfo is not None
-            assert str(t.tzinfo) == "UTC"
+    def test_returns_390_timestamps(self) -> None:
+        """Full trading day returns exactly 390 timestamps."""
+        timestamps = get_rth_minutes(date(2023, 3, 2))
+        assert len(timestamps) == 390
 
-    def test_first_and_last_minute_est(self) -> None:
-        """First bar is 09:30 ET, last is 15:59 ET (standard time)."""
-        times = get_rth_minutes(date(2023, 3, 1))
-        first_et = times[0].astimezone(_ET)
-        last_et = times[-1].astimezone(_ET)
-        assert first_et.hour == 9 and first_et.minute == 30
-        assert last_et.hour == 15 and last_et.minute == 59
+    def test_first_and_last_timestamps_winter(self) -> None:
+        """First is 09:30 ET, last is 15:59 ET in EST."""
+        timestamps = get_rth_minutes(date(2023, 3, 2))
+        # EST: 09:30 ET = 14:30 UTC, 15:59 ET = 20:59 UTC
+        assert timestamps[0] == datetime(2023, 3, 2, 14, 30, tzinfo=UTC)
+        assert timestamps[-1] == datetime(2023, 3, 2, 20, 59, tzinfo=UTC)
 
-    def test_first_and_last_minute_edt(self) -> None:
-        """Same check during EDT (June)."""
-        times = get_rth_minutes(date(2023, 6, 1))
-        first_et = times[0].astimezone(_ET)
-        last_et = times[-1].astimezone(_ET)
-        assert first_et.hour == 9 and first_et.minute == 30
-        assert last_et.hour == 15 and last_et.minute == 59
+    def test_first_and_last_timestamps_summer(self) -> None:
+        """First is 09:30 ET, last is 15:59 ET in EDT."""
+        timestamps = get_rth_minutes(date(2023, 6, 15))
+        # EDT: 09:30 ET = 13:30 UTC, 15:59 ET = 19:59 UTC
+        assert timestamps[0] == datetime(2023, 6, 15, 13, 30, tzinfo=UTC)
+        assert timestamps[-1] == datetime(2023, 6, 15, 19, 59, tzinfo=UTC)
 
-    def test_all_consecutive(self) -> None:
-        """All 390 timestamps are consecutive minutes."""
-        times = get_rth_minutes(date(2023, 3, 1))
-        for i in range(1, len(times)):
-            assert (times[i] - times[i - 1]).seconds == 60
+    def test_returns_utc_aware_datetimes(self) -> None:
+        """Output timestamps are UTC-aware."""
+        timestamps = get_rth_minutes(date(2023, 3, 2))
+        for ts in timestamps:
+            assert ts.tzinfo is not None, f"Expected aware datetime, got {ts.tzinfo}"
+            assert str(ts.tzinfo) == "UTC"
 
-    def test_utc_hours_differ_by_dst(self) -> None:
-        """UTC hour of 09:30 ET differs between EST (14:30) and EDT (13:30)."""
-        est_times = get_rth_minutes(date(2023, 3, 1))  # EST
-        edt_times = get_rth_minutes(date(2023, 6, 1))  # EDT
-        assert est_times[0].hour == 14  # 09:30 EST = 14:30 UTC
-        assert edt_times[0].hour == 13  # 09:30 EDT = 13:30 UTC
+    def test_consecutive_minute_intervals(self) -> None:
+        """Each timestamp is exactly 1 minute after the previous."""
+        timestamps = get_rth_minutes(date(2023, 3, 2))
+        diffs = [
+            (timestamps[i + 1] - timestamps[i]).total_seconds()
+            for i in range(len(timestamps) - 1)
+        ]
+        assert all(d == 60 for d in diffs)
 
 
 # ═══════════════════════════════════════════════════════════════
-# Import verification
+# Import from orbust.data
 # ═══════════════════════════════════════════════════════════════
 
 
-def test_importable() -> None:
-    """filter_rth, is_rth, get_rth_minutes are importable."""
-    from orbust.data.rth import filter_rth, get_rth_minutes, is_rth
+def test_importable_from_data_module() -> None:
+    """RTH functions are importable from orbust.data."""
+    from orbust.data import filter_rth, get_rth_minutes, is_rth
 
     assert filter_rth is not None
     assert is_rth is not None

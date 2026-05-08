@@ -3,6 +3,7 @@
 Provides:
     AlpacaFetchError: Descriptive exception for API failures.
     AlpacaFetcher: Historical bar fetcher with pagination and rate limiting.
+    AlpacaBarProvider: ``DataProvider`` implementation with caching + RTH.
 """
 
 from __future__ import annotations
@@ -12,15 +13,24 @@ import threading
 import time
 from collections import deque
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pandas as pd
 from structlog.stdlib import BoundLogger
 
 from orbust.config import AlpacaConfig
+from orbust.data.provider import DataProvider
+from orbust.data.rth import filter_rth
 from orbust.log import get_logger
 from orbust.types import Timeframe
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from orbust.config import SystemConfig
+    from orbust.data.store import ParquetStore
+    from orbust.types import BarEvent
 
 # ═══════════════════════════════════════════════════════════════
 # Constants
@@ -543,6 +553,175 @@ class AlpacaFetcher:
         df = df.reindex(columns=expected_columns)
 
         return df
+
+
+# ═══════════════════════════════════════════════════════════════
+# AlpacaBarProvider — DataProvider implementation
+# ═══════════════════════════════════════════════════════════════
+
+
+class AlpacaBarProvider(DataProvider):
+    """A ``DataProvider`` that fetches from Alpaca, caches to Parquet, and
+    optionally applies RTH filtering.
+
+    Caching strategy:
+        On ``get_bars()``: check ``ParquetStore`` for cached data, identify
+        missing date ranges, fetch only those ranges from Alpaca, write them
+        to cache, then return the merged result.
+
+    Args:
+        config: Full system configuration (used for Alpaca credentials
+            and data directory paths).
+        rth_only: When ``True`` (default), filters returned bars to
+            Regular Trading Hours (09:30-16:00 ET, Mon-Fri).
+    """
+
+    def __init__(
+        self,
+        config: SystemConfig,
+        rth_only: bool = True,
+    ) -> None:
+        self._config: SystemConfig = config
+        self._rth_only = rth_only
+        self._fetcher = AlpacaFetcher(config.alpaca)
+        self._stores: dict[Timeframe, ParquetStore] = {}
+        self._store_lock = threading.Lock()
+        self._logger = get_logger(component="alpaca_provider")
+
+    # ── Public API ────────────────────────────────────────────
+
+    def get_bars(
+        self,
+        symbols: list[str],
+        start: datetime,
+        end: datetime,
+        timeframe: Timeframe,
+    ) -> pd.DataFrame:
+        """Fetch historical bars with caching.
+
+        Checks the Parquet cache first.  For any date ranges not yet
+        cached, fetches from the Alpaca API, writes to cache, then
+        returns the merged result.  Optionally filters to RTH.
+
+        Args:
+            symbols: List of ticker symbols.
+            start: Start of query window (UTC, inclusive).
+            end: End of query window (UTC, inclusive).
+            timeframe: Bar aggregation period.
+
+        Returns:
+            Wide-format DataFrame with UTC DatetimeIndex and
+            ``{SYM}_{field}`` columns.
+        """
+        store = self._get_store(timeframe)
+
+        # Validate inputs (delegates detailed validation to fetcher)
+        symbols = list(dict.fromkeys(symbols)) if symbols else []
+
+        if not symbols:
+            raise ValueError("at least one symbol required")
+        if start.tzinfo is None or end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware datetimes")
+        if start >= end:
+            raise ValueError(f"start ({start.isoformat()}) must be before end ({end.isoformat()})")
+
+        # Find which ranges are not yet cached
+        missing = store.find_missing_ranges(symbols, start, end)
+
+        if not missing:
+            self._logger.info(
+                "provider_cache_hit",
+                symbols=symbols,
+                start=start.isoformat(),
+                end=end.isoformat(),
+            )
+        else:
+            missing_desc = "; ".join(f"{ms.isoformat()} -> {me.isoformat()}" for ms, me in missing)
+            self._logger.info(
+                "provider_cache_partial",
+                symbols=symbols,
+                missing_ranges=len(missing),
+                ranges=missing_desc,
+            )
+
+            for ms, me in missing:
+                # Clamp range to the original request bounds
+                fetch_start = max(ms, start)
+                fetch_end = min(me, end)
+                if fetch_start >= fetch_end:
+                    continue
+
+                fetched = self._fetcher.fetch_bars(symbols, fetch_start, fetch_end, timeframe)
+                if not fetched.empty:
+                    store.write(fetched, symbols)
+
+        # Read the now-complete range from cache
+        df = store.read(symbols=symbols, start=start, end=end)
+
+        if df is None or df.empty:
+            expected_columns = [f"{sym}_{field}" for sym in symbols for field in ALL_FIELDS]
+            return pd.DataFrame(
+                index=pd.DatetimeIndex([], tz=UTC, name="timestamp"),
+                columns=expected_columns,
+                dtype=float,
+            )
+
+        # Apply RTH filtering if configured
+        if self._rth_only:
+            df = filter_rth(df)
+
+        # Ensure ALL requested symbols are present as columns — if a symbol
+        # has no cached data its columns will be NaN.
+        expected_columns = [f"{sym}_{field}" for sym in symbols for field in ALL_FIELDS]
+        missing_cols = set(expected_columns) - set(df.columns)
+        if missing_cols:
+            df = df.reindex(columns=expected_columns)
+
+        return df
+
+    def stream_bars(
+        self,
+        symbols: list[str],
+        timeframe: Timeframe,
+    ) -> Iterator[BarEvent]:
+        """Streaming bars — not implemented in Phase 2.
+
+        Raises:
+            NotImplementedError: Always.
+        """
+        raise NotImplementedError("stream_bars is not implemented in Phase 2")
+
+    def available_fields(self) -> list[str]:
+        """Return the list of field names this provider supplies.
+
+        Returns:
+            All 7 Alpaca bar fields: ``open``, ``high``, ``low``,
+            ``close``, ``volume``, ``trade_count``, ``vwap``.
+        """
+        return list(ALL_FIELDS)
+
+    # ── Internals ─────────────────────────────────────────────
+
+    def _get_store(self, timeframe: Timeframe) -> ParquetStore:
+        """Get or create a ``ParquetStore`` for the given *timeframe* (thread-safe)."""
+        if timeframe not in self._stores:
+            with self._store_lock:
+                # Double-check after acquiring lock
+                if timeframe not in self._stores:
+                    from orbust.data.store import ParquetStore as _ParquetStore
+
+                    self._stores[timeframe] = _ParquetStore(self._config.data.data_dir, timeframe)
+        return self._stores[timeframe]
+
+    def close(self) -> None:
+        """Release the underlying HTTP client."""
+        self._fetcher.close()
+
+    def __enter__(self) -> AlpacaBarProvider:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
 
 
 # ═══════════════════════════════════════════════════════════════
