@@ -78,7 +78,7 @@ def filter_rth(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with only RTH bars. Returns an empty DataFrame
         (same columns, no rows) if no RTH bars exist.
     """
-    if df.empty:
+    if len(df) == 0:
         return df
 
     # Normalize index to ET for vectorized comparison

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from orbust.data.rth import get_rth_minutes
+from orbust.data.rth import filter_rth
 from orbust.types import Timeframe
 
 if TYPE_CHECKING:
@@ -156,48 +156,40 @@ def detect_gaps(
     if not expected:
         return []
 
-    # For each symbol, find gaps between expected and actual timestamps
     # Drop tz info for comparison to handle both naive and aware indices consistently
     idx_naive = idx.tz_localize(None) if idx.tz is not None else idx
     actual_set = set(idx_naive)
     timedelta_step = _timeframe_delta(timeframe)
 
-    results: list[GapInfo] = []
-    for sym in symbols:
-        missing_timestamps = sorted(expected - actual_set)
-        if not missing_timestamps:
-            continue
-
-        # Merge consecutive missing timestamps into gaps
+    # Compute index-level gaps ONCE (all symbols share the index)
+    missing_timestamps = sorted(expected - actual_set)
+    index_gaps: list[tuple[datetime, datetime, int]] = []
+    if missing_timestamps:
         gap_start = missing_timestamps[0]
         prev = gap_start
         count = 1
-
         for ts in missing_timestamps[1:]:
             if ts - prev == timedelta_step:
                 count += 1
             else:
-                results.append(
-                    GapInfo(
-                        symbol=sym,
-                        gap_start=gap_start,
-                        gap_end=prev + timedelta_step,
-                        missing_bars=count,
-                    )
-                )
+                index_gaps.append((gap_start, prev + timedelta_step, count))
                 gap_start = ts
                 count = 1
             prev = ts
+        index_gaps.append((gap_start, prev + timedelta_step, count))
 
-        results.append(
-            GapInfo(
-                symbol=sym,
-                gap_start=gap_start,
-                gap_end=prev + timedelta_step,
-                missing_bars=count,
+    # Emit one GapInfo per symbol per gap
+    results: list[GapInfo] = []
+    for sym in symbols:
+        for gs, ge, cnt in index_gaps:
+            results.append(
+                GapInfo(
+                    symbol=sym,
+                    gap_start=gs,
+                    gap_end=ge,
+                    missing_bars=cnt,
+                )
             )
-        )
-
     return results
 
 
@@ -267,14 +259,14 @@ def validate_timestamps(
     # Check alignment to timeframe boundary
     if timeframe is not None:
         delta = _timeframe_delta(timeframe)
-        misaligned = []
-        for ts in idx:
-            ts_naive = ts.tz_convert("UTC").replace(tzinfo=None) if ts.tz is not None else ts
-            # Check if timestamp lands on a boundary of the timeframe
-            epoch = datetime(1970, 1, 1)
-            elapsed = ts_naive - epoch
-            if elapsed.total_seconds() % delta.total_seconds() != 0:
-                misaligned.append(ts)
+        delta_ns = int(delta.total_seconds() * 1_000_000_000)
+        # Ensure index is UTC for consistent comparison
+        utc_idx = idx.tz_convert("UTC") if idx.tz is not None else idx
+        # Check alignment relative to the first timestamp (avoids epoch drift)
+        # NOTE: .asi8 gives int64 in the index's native resolution (us or ns)
+        offset_ns = (utc_idx.asi8 - utc_idx.asi8[0]) * 1000
+        misaligned_mask = (offset_ns % delta_ns) != 0
+        misaligned = idx[misaligned_mask].tolist()
         if misaligned:
             issues.append(
                 TimestampIssue(
@@ -335,24 +327,20 @@ def _expected_timestamps(
     rth_only: bool,
 ) -> set[datetime]:
     """Build the set of expected UTC timestamps for a date range."""
-    expected: set[datetime] = set()
-    current = start_date
-    while current <= end_date:
-        if rth_only:
-            if current.weekday() < 5:  # weekday
-                for ts in get_rth_minutes(current):
-                    expected.add(ts.replace(tzinfo=None))
-        else:
-            # Full day: one bar per timeframe step
-            delta = _timeframe_delta(timeframe)
-            day_start = datetime(current.year, current.month, current.day, tzinfo=None)
-            day_end = day_start + timedelta(days=1)
-            ts = day_start
-            while ts < day_end:
-                expected.add(ts)
-                ts += delta
-        current += timedelta(days=1)
-    return expected
+    delta = _timeframe_delta(timeframe)
+    # Generate range covering the full days in UTC
+    idx = pd.date_range(
+        start=pd.Timestamp(start_date, tz="UTC"),
+        end=pd.Timestamp(end_date, tz="UTC") + timedelta(days=1),
+        freq=delta,
+        inclusive="left",
+    )
+
+    if rth_only:
+        idx = filter_rth(pd.DataFrame(index=idx)).index
+
+    # Return as naive UTC datetimes for comparison with localized-to-naive index
+    return set(idx.tz_localize(None))
 
 
 def _timeframe_delta(timeframe: Timeframe) -> timedelta:
