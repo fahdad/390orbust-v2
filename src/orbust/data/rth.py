@@ -7,6 +7,8 @@ Provides:
     filter_rth: Remove bars outside RTH from a wide-format DataFrame.
     is_rth: Check if a single timestamp falls within RTH.
     get_rth_minutes: Generate all RTH minute timestamps for a trading day.
+
+All timezone conversion uses ``zoneinfo`` (stdlib, Python 3.9+).
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import pandas as pd
 # ═══════════════════════════════════════════════════════════════
 
 # ET (Eastern Time) timezone — handles both EST and EDT automatically
-_ET = ZoneInfo("America/New_York")
+US_EASTERN = ZoneInfo("America/New_York")
 
 # RTH window in ET
 RTH_START_ET = time(9, 30)  # 09:30 ET — market open
@@ -83,13 +85,12 @@ def filter_rth(df: pd.DataFrame) -> pd.DataFrame:
     idx = df.index
     if idx.tz is None:
         idx = idx.tz_localize("UTC")
-    idx_et = idx.tz_convert(_ET)
+    idx_et = idx.tz_convert(US_EASTERN)
 
     # Weekend filter: Monday=0 .. Friday=4, Saturday=5, Sunday=6
     weekday_mask = idx_et.weekday < 5
 
     # Time-of-day filter: [09:30, 16:00) ET
-    # Build time components for vectorized comparison
     time_mask = (idx_et.hour > 9) | ((idx_et.hour == 9) & (idx_et.minute >= 30))
     time_mask &= idx_et.hour < 16
 
@@ -114,7 +115,7 @@ def get_rth_minutes(trading_date: date) -> list[datetime]:
     start_dt_et = datetime.combine(
         trading_date,
         RTH_START_ET,
-        tzinfo=_ET,
+        tzinfo=US_EASTERN,
     )
     idx = pd.date_range(start=start_dt_et, periods=_RTH_MINUTES_PER_DAY, freq="min")
     return idx.tz_convert("UTC").to_pydatetime().tolist()
@@ -128,6 +129,5 @@ def get_rth_minutes(trading_date: date) -> list[datetime]:
 def _to_et(dt: datetime) -> datetime:
     """Convert a datetime to ET. Naive inputs are treated as UTC."""
     if dt.tzinfo is None:
-        # Treat naive as UTC
         dt = dt.replace(tzinfo=ZoneInfo("UTC"))
-    return dt.astimezone(_ET)
+    return dt.astimezone(US_EASTERN)

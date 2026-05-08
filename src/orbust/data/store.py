@@ -260,8 +260,20 @@ class ParquetStore:
 
     @staticmethod
     def _col_symbol(col_name: str) -> str:
-        """Extract symbol from ``{SYM}_{field}`` column name."""
-        return col_name.rsplit("_", 1)[0]
+        """Extract symbol from ``{SYM}_{field}`` column name.
+
+        Handles multi-word field names (e.g. ``trade_count``,
+        ``XOM_trade_count`` -> ``XOM``).
+        """
+        # Known multi-word field names that appear after the symbol prefix
+        _known_fields = {"open", "high", "low", "close", "volume", "trade_count", "vwap"}
+        # Try splitting on each known field marker
+        parts = col_name.rsplit("_", 1)
+        if len(parts) == 2 and parts[1] in _known_fields:
+            return parts[0]
+        # Fallback: split at the first underscore (SYM_rest)
+        first_part = col_name.split("_", 1)[0]
+        return first_part
 
     def _timeframe_dir(self) -> str:
         return self._timeframe.value.replace("Min", "min").lower()
